@@ -1,6 +1,7 @@
 from flask import Blueprint
 
-# Todos os endpoint utilizados começam com /api
+# Criar blueprint da API
 api_blueprint = Blueprint('api', __name__, url_prefix='/api')
 
-from . import auth, main
+# Importar rotas
+from . import auth
