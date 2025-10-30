@@ -16,7 +16,12 @@
       packages = with pkgs; [
         (python313.withPackages (python-pkgs: [
           python-pkgs.flask
+          python-pkgs.flask-jwt-extended
+          python-pkgs.pymongo
+          python-pkgs.python-dotenv
         ]))
+        mongodb-compass
+        postman
       ];
       shellHook = ''
         export FLASK_APP=app
