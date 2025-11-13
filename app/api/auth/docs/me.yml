@@ -1,0 +1,19 @@
+tags:
+  - Perfil
+summary: Retorna o usuário autenticado
+description: Retorna o ID do usuário presente no token JWT.
+
+security:
+  - BearerAuth: []
+
+responses:
+  200:
+    description: Usuário autenticado
+    schema:
+      type: object
+      properties:
+        id:
+          type: string
+
+  401:
+    description: Token inválido ou ausente

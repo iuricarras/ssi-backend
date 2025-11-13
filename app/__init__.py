@@ -25,7 +25,7 @@ def create_app(config_class=Config):
     auth_service = AuthService(
         mongo_client=mongo_client,
         db_name=db_name,
-        config=app.config
+        config=config_class
     )
 
     # Blueprints
