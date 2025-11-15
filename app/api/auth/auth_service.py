@@ -5,12 +5,16 @@ from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 from pymongo import MongoClient
 from pymongo.collection import Collection
+from flask_mail import Mail, Message
+import os
+from pathlib import Path
 
 class AuthService:
-    def __init__(self, mongo_client: MongoClient, db_name: str, config):
+    def __init__(self, mongo_client: MongoClient, db_name: str, config, mail_service: Mail):
         self.db = mongo_client[db_name]
         self.challenges: Collection = self.db["otp_challenges"]
         self.config = config
+        self.mail_service = mail_service 
 
         self._setup_indexes()
 
@@ -42,12 +46,28 @@ class AuthService:
     def _compare_const(self, a: str, b: str) -> bool:
         return hmac.compare_digest(a, b)
 
+    def _generate_otp_code(self) -> str:
+        return str(secrets.randbelow(900000) + 100000)
+
+    def _get_email_template(self, otp_code: str, ttl: str, user: str) -> str:
+        current_dir = Path(os.path.dirname(os.path.abspath(__file__)))
+        file_path = current_dir / 'email/template_email.html'
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                template_html = file.read()
+                template_html = template_html.replace('{otp_code}', otp_code)
+                template_html = template_html.replace('{time}', ttl)
+                template_html = template_html.replace('{nome}', user)
+
+        except FileNotFoundError:
+            template_html = ""
+
+        return template_html
+
     def create_otp_challenge(self, email: str, ip: str) -> Optional[Dict[str, Any]]:
         self.challenges.delete_many({"email": email})
+        code = self._generate_otp_code()
         challenge_id = secrets.token_urlsafe(16)
-
-        # OTP mockado
-        code = "123456"
 
         now = datetime.utcnow()
         expires_at = now + timedelta(seconds=self.config.OTP_TTL_SEC)
@@ -68,9 +88,28 @@ class AuthService:
             print(f"Erro ao salvar challenge: {e}")
             return None
 
-        print(f"[MOCK] OTP gerado para {email}: {code}")
+        # Enviar email com o OTP 
+        ttl = self.config.OTP_TTL_SEC / 60
+        ttl_str = str(round(ttl))
+        user = "User" # quando funcionar com a base de dados, juntar o nome
+        try:
+            sender_email = self.mail_service.MAIL_DEFAULT_SENDER
+            html_content = self._get_email_template(code, ttl_str, user)
 
-        return {"challenge_id": challenge_id}
+            msg = Message(
+                subject="Seu Código de Acesso Único (OTP)",
+                recipients=[email],
+                sender=sender_email,
+                reply_to="no-reply@bitsofme.pt"
+            )
+            msg.html = html_content
+            self.mail_service.send(msg)
+
+            return {"challenge_id": challenge_id}
+
+        except Exception as e:
+            self.challenges.delete_many({"challenge_id": challenge_id})
+            return None
 
     def verify_otp(self, email: str, challenge_id: str, code: str) -> Dict[str, Any]:
         now = datetime.utcnow()

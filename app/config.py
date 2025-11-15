@@ -15,7 +15,7 @@ class Config:
 
     # OTP
     OTP_SECRET_KEY = os.environ.get("OTP_SECRET_KEY", secrets.token_hex(32))
-    OTP_TTL_SEC = int(os.environ.get("OTP_TTL_SEC", 600))
+    OTP_TTL_SEC = int(os.environ.get("OTP_TTL_SEC", 300))
     OTP_DIGITS = int(os.environ.get("OTP_DIGITS", 6))
 
     # CORS
