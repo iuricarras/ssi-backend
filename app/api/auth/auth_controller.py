@@ -5,7 +5,8 @@ from flask_jwt_extended import (
     jwt_required,
     get_jwt_identity,
     set_access_cookies,
-    set_refresh_cookies
+    set_refresh_cookies,
+    unset_jwt_cookies
 )
 from flasgger import swag_from
 import os
@@ -18,7 +19,7 @@ def create_auth_controller(auth_service):
     docs = os.path.join(os.path.dirname(__file__), 'docs')
 
     @bp.post('/auth/start')
-    @swag_from(os.path.join(docs, 'auth_start.yml'))
+    @swag_from(os.path.join(docs, 'start.yml'))
     def auth_start():
         """Inicia o processo de autenticação OTP"""
         data = request.get_json(silent=True) or {}
@@ -40,7 +41,7 @@ def create_auth_controller(auth_service):
         }), 200
 
     @bp.post('/auth/verify')
-    @swag_from(os.path.join(docs, 'auth_verify.yml'))
+    @swag_from(os.path.join(docs, 'verify.yml'))
     def auth_verify():
         """Verifica o OTP e autentica o usuário"""
         data = request.get_json(silent=True) or {}
@@ -81,11 +82,19 @@ def create_auth_controller(auth_service):
         set_access_cookies(resp, new_access)
         return resp, 200
 
+    @bp.post('/auth/logout')
+    @swag_from(os.path.join(docs, 'logout.yml'))
+    def logout():
+        """Remove cookies JWT e finaliza sessão."""
+        resp = jsonify({"msg": "logout ok"})
+        unset_jwt_cookies(resp)
+        return resp, 200
+
     @swag_from(os.path.join(docs, 'swagger_login.yml'))
     @bp.post('/auth/swagger-login')
     def swagger_login():
-        access = create_access_token(identity="testuser", fresh=True)
-        refresh = create_refresh_token(identity="testuser")
+        access = create_access_token(identity="swagger", fresh=True)
+        refresh = create_refresh_token(identity="swagger")
 
         resp = jsonify({'ok': True})
         set_access_cookies(resp, access)

@@ -1,0 +1,44 @@
+swagger: '2.0'
+info:
+  title: Início de Autenticação OTP
+  description: Endpoint para iniciar o processo de autenticação baseado em OTP.
+  version: "1.0"
+
+tags:
+  - OTP
+
+summary: Inicia processo de autenticação OTP
+description: >
+  Cria um novo desafio OTP associado ao e-mail informado.  
+  Retorna um challenge_id que deve ser usado posteriormente para validar o código enviado ao e-mail do usuário.
+
+consumes:
+  - application/json
+produces:
+  - application/json
+
+parameters:
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      properties:
+        email:
+          type: string
+          example: user@example.com
+      required:
+        - email
+
+responses:
+  200:
+    description: Processo de autenticação iniciado com sucesso
+    schema:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        challenge_id:
+          type: string
+          example: abc123

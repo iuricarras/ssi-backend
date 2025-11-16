@@ -1,0 +1,55 @@
+swagger: '2.0'
+info:
+  title: Verificação de OTP
+  description: Endpoint responsável por validar o OTP enviado ao e-mail do usuário.
+  version: "1.0"
+
+tags:
+  - OTP
+
+summary: Verifica OTP e retorna JWTs
+description: >
+  Valida o código OTP fornecido e autentica o usuário.
+  Em caso de sucesso, gera e retorna tokens JWT via cookies HttpOnly, além de indicar resultado em JSON.
+
+consumes:
+  - application/json
+produces:
+  - application/json
+
+parameters:
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      properties:
+        email:
+          type: string
+          example: user@example.com
+        challenge_id:
+          type: string
+          example: abc123
+        code:
+          type: string
+          example: "123456"
+      required:
+        - email
+        - challenge_id
+        - code
+
+responses:
+  200:
+    description: OTP validado e JWTs gerados
+    schema:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: true
+    examples:
+      application/json:
+        ok: true
+
+  400:
+    description: OTP inválido ou expirado

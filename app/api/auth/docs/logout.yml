@@ -1,0 +1,27 @@
+swagger: '2.0'
+info:
+  title: Logout
+  description: Encerra a sessão do usuário removendo os cookies JWT.
+  version: "1.0"
+
+tags:
+  - Auth
+
+summary: Realiza logout do usuário
+description: >
+  Remove os cookies de access e refresh token, encerrando a sessão atual.
+
+consumes:
+  - application/json
+produces:
+  - application/json
+
+responses:
+  200:
+    description: Logout realizado com sucesso; cookies foram removidos.
+    schema:
+      type: object
+      properties:
+        msg:
+          type: string
+          example: logout ok
