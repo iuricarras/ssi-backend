@@ -1,0 +1,14 @@
+swagger: '2.0'
+info:
+  title: Swagger Login
+  description: Autentica um usuário para testes no Swagger.
+  version: "1.0"
+
+consumes:
+  - application/json
+produces:
+  - application/json
+
+responses:
+  200:
+    description: Login realizado com sucesso; cookies foram definidos.
