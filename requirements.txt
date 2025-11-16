@@ -1,0 +1,6 @@
+Flask
+Flask-JWT-Extended
+pymongo
+flask-cors
+python-dotenv
+flask-mail

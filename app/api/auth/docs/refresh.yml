@@ -1,0 +1,20 @@
+tags:
+  - Autenticação
+summary: Gera novo access token
+description: >
+  Recebe um refresh token válido e retorna um novo access token.
+
+security:
+  - BearerAuth: []
+
+responses:
+  200:
+    description: Novo access token
+    schema:
+      type: object
+      properties:
+        access_token:
+          type: string
+
+  401:
+    description: Refresh token inválido
