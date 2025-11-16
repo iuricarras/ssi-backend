@@ -1,0 +1,73 @@
+tags:
+  - Registo
+summary: Regista uma nova Entidade Credenciadora
+description: Endpoint para registar uma nova EC no sistema
+parameters:
+  - in: body
+    name: body
+    description: Dados da nova Entidade Credenciadora
+    required: true
+    schema:
+      type: object
+      required:
+        - authenticationKey
+        - nif
+        - email
+        - tel
+        - signkey
+        - name
+        - tipo
+      properties:
+        authenticationKey:
+          type: string
+          example: "auth-key-12345"
+          description: "Chave de autenticação única"
+        nif:
+          type: string
+          example: "500123456"
+          description: "NIF da entidade"
+        email:
+          type: string
+          example: "contacto@exemplo.pt"
+          description: "Email de contacto"
+        tel:
+          type: string
+          example: "912345678"
+          description: "Número de telefone"
+        signkey:
+          type: string
+          example: "chave-exemplo"
+          description: "Chave de assinatura digital"
+        name:
+          type: string
+          example: "Empresa Exemplo Lda"
+          description: "Nome da empresa"
+        tipo:
+          type: string
+          example: "EC"
+          description: "Tipo de entidade"
+responses:
+  200:
+    description: EC registada com sucesso
+    schema:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Entidade Credenciadora registada com sucesso"
+  400:
+    description: Dados inválidos
+    schema:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "O corpo da requisição deve ser JSON."
+  409:
+    description: Conflito - dados duplicados
+    schema:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Já existe uma EC com este NIF"
