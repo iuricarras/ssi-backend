@@ -3,7 +3,10 @@ from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
     jwt_required,
-    get_jwt_identity
+    get_jwt_identity,
+    set_access_cookies,
+    set_refresh_cookies,
+    unset_jwt_cookies
 )
 from flasgger import swag_from
 import os
@@ -16,9 +19,9 @@ def create_auth_controller(auth_service):
     docs = os.path.join(os.path.dirname(__file__), 'docs')
 
     @bp.post('/auth/start')
-    @swag_from(os.path.join(docs, 'auth_start.yml'))
+    @swag_from(os.path.join(docs, 'start.yml'))
     def auth_start():
-        """Inicia o processo de autenticação OTP (mockado)."""
+        """Inicia o processo de autenticação OTP"""
         data = request.get_json(silent=True) or {}
         email = (data.get('email') or '').strip().lower()
 
@@ -38,9 +41,9 @@ def create_auth_controller(auth_service):
         }), 200
 
     @bp.post('/auth/verify')
-    @swag_from(os.path.join(docs, 'auth_verify.yml'))
+    @swag_from(os.path.join(docs, 'verify.yml'))
     def auth_verify():
-        """Verifica o OTP mockado e retorna tokens JWT."""
+        """Verifica o OTP e autentica o usuário"""
         data = request.get_json(silent=True) or {}
         email = (data.get('email') or '').strip().lower()
         challenge_id = data.get('challenge_id') or ''
@@ -55,13 +58,12 @@ def create_auth_controller(auth_service):
         access = create_access_token(identity=str(user_id), fresh=True)
         refresh = create_refresh_token(identity=str(user_id))
 
-        return jsonify({
-            'ok': True,
-            'access_token': access,
-            'refresh_token': refresh
-        }), 200
+        resp = jsonify({'ok': True})
+        set_access_cookies(resp, access)
+        set_refresh_cookies(resp, refresh)
+        return resp, 200
 
-    @bp.get('/me')
+    @bp.get('/auth/me')
     @jwt_required()
     @swag_from(os.path.join(docs, 'me.yml'))
     def me():
@@ -75,6 +77,28 @@ def create_auth_controller(auth_service):
         """Gera novo access token usando refresh token."""
         uid = get_jwt_identity()
         new_access = create_access_token(identity=uid, fresh=False)
-        return jsonify({'access_token': new_access}), 200
+
+        resp = jsonify({'ok': True})
+        set_access_cookies(resp, new_access)
+        return resp, 200
+
+    @bp.post('/auth/logout')
+    @swag_from(os.path.join(docs, 'logout.yml'))
+    def logout():
+        """Remove cookies JWT e finaliza sessão."""
+        resp = jsonify({"msg": "logout ok"})
+        unset_jwt_cookies(resp)
+        return resp, 200
+
+    @swag_from(os.path.join(docs, 'swagger_login.yml'))
+    @bp.post('/auth/swagger-login')
+    def swagger_login():
+        access = create_access_token(identity="swagger", fresh=True)
+        refresh = create_refresh_token(identity="swagger")
+
+        resp = jsonify({'ok': True})
+        set_access_cookies(resp, access)
+        set_refresh_cookies(resp, refresh)
+        return resp, 200
 
     return bp

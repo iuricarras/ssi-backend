@@ -25,19 +25,19 @@ class AuthService:
     def _otp_hash_once(self, code: str, challenge_id: str, email: str) -> str:
         msg = f"{challenge_id}:{email}:{code}".encode()
         return hmac.new(
-            self.config.OTP_SECRET_KEY.encode(),
+            self.config["OTP_SECRET_KEY"].encode(),
             msg,
             hashlib.sha256
         ).hexdigest()
 
     def _otp_hash(self, code: str, challenge_id: str, email: str) -> str:
         """
-        Aplica HMAC SHA256 iterado 1024 vezes (key stretching).
+        Aplica HMAC SHA256 iterado 1024 vezes.
         """
         h = self._otp_hash_once(code, challenge_id, email)
         for _ in range(1023):
             h = hmac.new(
-                self.config.OTP_SECRET_KEY.encode(),
+                self.config["OTP_SECRET_KEY"].encode(),
                 h.encode(),
                 hashlib.sha256
             ).hexdigest()
@@ -70,7 +70,7 @@ class AuthService:
         challenge_id = secrets.token_urlsafe(16)
 
         now = datetime.utcnow()
-        expires_at = now + timedelta(seconds=self.config.OTP_TTL_SEC)
+        expires_at = now + timedelta(seconds=self.config["OTP_TTL_SEC"])
 
         challenge_doc = {
             "challenge_id": challenge_id,
@@ -89,11 +89,11 @@ class AuthService:
             return None
 
         # Enviar email com o OTP 
-        ttl = self.config.OTP_TTL_SEC / 60
+        ttl = self.config["OTP_TTL_SEC"] / 60
         ttl_str = str(round(ttl))
         user = "User" # quando funcionar com a base de dados, juntar o nome
         try:
-            sender_email = self.mail_service.MAIL_DEFAULT_SENDER
+            sender_email = sender_email = self.config["MAIL_DEFAULT_SENDER"]
             html_content = self._get_email_template(code, ttl_str, user)
 
             msg = Message(

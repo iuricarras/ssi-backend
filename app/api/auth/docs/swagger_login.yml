@@ -1,0 +1,29 @@
+swagger: '2.0'
+info:
+  title: Swagger Login
+  description: Endpoint utilizado apenas para autenticação dentro do Swagger UI.
+  version: "1.0"
+
+tags:
+  - Swagger
+
+summary: Autentica usuário no Swagger
+description: >
+  Realiza autenticação mock para uso exclusivo durante testes no Swagger UI.
+  Define os cookies de access e refresh token automaticamente.
+  Não deve ser utilizado pela aplicação real.
+
+consumes:
+  - application/json
+produces:
+  - application/json
+
+responses:
+  200:
+    description: Login realizado com sucesso; cookies foram definidos.
+    schema:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: true

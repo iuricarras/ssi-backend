@@ -1,10 +1,21 @@
+swagger: '2.0'
+info:
+  title: Perfil do Usuário
+  description: Endpoint para recuperar o usuário autenticado.
+  version: "1.0"
+
 tags:
-  - Perfil
+  - Auth
+
 summary: Retorna o usuário autenticado
-description: Retorna o ID do usuário presente no token JWT.
+description: >
+  Retorna o ID do usuário presente no token JWT válido enviado via cookies.
 
 security:
   - BearerAuth: []
+
+produces:
+  - application/json
 
 responses:
   200:
@@ -14,6 +25,7 @@ responses:
       properties:
         id:
           type: string
+          example: user@example.com
 
   401:
     description: Token inválido ou ausente

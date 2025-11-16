@@ -1,20 +1,32 @@
+swagger: '2.0'
+info:
+  title: Refresh Token
+  description: Endpoint para renovar o access token do usuário autenticado.
+  version: "1.0"
+
 tags:
-  - Autenticação
-summary: Gera novo access token
+  - Auth
+
+summary: Gera um novo access token
 description: >
-  Recebe um refresh token válido e retorna um novo access token.
+  Recebe um refresh token válido enviado via cookies HttpOnly e retorna um novo access token.
+  O refresh token deve estar ativo e não expirado.
 
 security:
   - BearerAuth: []
 
+produces:
+  - application/json
+
 responses:
   200:
-    description: Novo access token
+    description: Novo access token emitido com sucesso
     schema:
       type: object
       properties:
         access_token:
           type: string
+          example: eyJhbGciOiJIUzI1...
 
   401:
-    description: Refresh token inválido
+    description: Refresh token inválido ou expirado
