@@ -1,0 +1,45 @@
+tags:
+  - Autenticação
+summary: Inicia processo de autenticação por Assinatura Digital
+description: >
+  Cria um desafio de assinatura, gerando um nonce (número único). Retorna um challenge_id e o nonce (Base64)
+  para ser assinado pelo cliente com a chave privada.
+
+consumes:
+  - application/json
+
+parameters:
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      properties:
+        email:
+          type: string
+      required:
+        - email
+
+responses:
+  200:
+    description: Desafio criado com sucesso
+    schema:
+      type: object
+      properties:
+        status:
+          type: string
+        challenge_id:
+          type: string
+        nonce:
+          type: string
+    examples:
+      application/json:
+        status: "ok"
+        challenge_id: "xyz789"
+        nonce: "S01FS0VYMjAzbW9ubmE="
+
+  400:
+    description: Falta o campo 'email'
+
+  500:
+    description: Erro interno ao criar o desafio

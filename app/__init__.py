@@ -13,6 +13,7 @@ from .api.auth.auth_service import AuthService
 jwt = JWTManager()
 
 def create_app(config_class=Config):
+    load_dotenv()
     app = Flask(__name__)
     app.config.from_object(config_class)
 

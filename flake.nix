@@ -16,6 +16,7 @@
       packages = with pkgs; [
         (python313.withPackages (python-pkgs: [
           python-pkgs.flask
+          python-pkgs.cryptography 
         ]))
       ];
       shellHook = ''

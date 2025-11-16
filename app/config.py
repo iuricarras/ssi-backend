@@ -18,5 +18,8 @@ class Config:
     OTP_TTL_SEC = int(os.environ.get("OTP_TTL_SEC", 300))
     OTP_DIGITS = int(os.environ.get("OTP_DIGITS", 6))
 
+    # DIGITAL SIGNATURE
+    NONCE_TTL_SEC = int(os.environ.get("NONCE_TTL_SEC", 300)) 
+
     # CORS
     CORS_ORIGIN = os.environ.get("CORS_ORIGIN", "http://localhost:4200")
