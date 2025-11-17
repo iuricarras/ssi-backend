@@ -7,10 +7,8 @@ class Config:
     JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", secrets.token_hex(32))
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=int(os.environ.get("JWT_ACCESS_MINUTES", 15)))
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=int(os.environ.get("JWT_REFRESH_DAYS", 7)))
-
-    # Aqui mudamos:
     JWT_TOKEN_LOCATION = ["cookies"]
-    JWT_COOKIE_SECURE = False
+    JWT_COOKIE_SECURE = True
     JWT_COOKIE_SAMESITE = "Lax"
     JWT_COOKIE_HTTPONLY = True
     JWT_ACCESS_COOKIE_PATH = "/api/"
@@ -35,7 +33,7 @@ class Config:
     MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER")
 
     # CORS
-    CORS_ORIGIN = os.environ.get("CORS_ORIGIN", "http://localhost:4200")
+    CORS_ORIGIN = os.environ.get("CORS_ORIGIN", "https://localhost:4200")
 
     # SWAGGER
     SWAGGER = {
