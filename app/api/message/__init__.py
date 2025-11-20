@@ -1,1 +1,1 @@
-from .hmac import generate_hmac_signature
+from .hmac import MessageAuthentication

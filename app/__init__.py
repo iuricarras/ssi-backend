@@ -8,6 +8,7 @@ from flask_cors import CORS
 from .config import Config
 from .api.auth.auth_service import AuthService
 from .api.register.register_service import RegService
+from .api.message.hmac import MessageAuthentication
 
 jwt = JWTManager()
 
@@ -52,13 +53,18 @@ def create_app(config_class=Config) -> Flask:
         config=config_class
     )
 
+    message_authentication = MessageAuthentication(
+        mongo_client=mongo_client,
+        db_name=db_name
+    )
+
     # Blueprints
     from .api import api_blueprint
     from .api.auth import register_auth_routes
     from .api.register import register_reg_routes
     register_reg_routes(api_blueprint, register_service)
 
-    register_auth_routes(api_blueprint, auth_service)
+    register_auth_routes(api_blueprint, auth_service, message_authentication)
     app.register_blueprint(api_blueprint)
 
 

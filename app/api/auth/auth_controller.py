@@ -9,9 +9,10 @@ from flask_jwt_extended import (
     unset_jwt_cookies
 )
 from flasgger import swag_from
+from app.api.message import MessageAuthentication
 import os
 
-def create_auth_controller(auth_service):
+def create_auth_controller(auth_service, message_authentication: MessageAuthentication):
     """
     Factory que cria e retorna o controller de autenticação.
     """
@@ -67,7 +68,19 @@ def create_auth_controller(auth_service):
     @jwt_required()
     @swag_from(os.path.join(docs, 'me.yml'))
     def me():
-        """Retorna o usuário autenticado."""
+        
+        message = message_authentication.generate_hmac_signature(
+            message=str(get_jwt_identity()),
+            userID=str(get_jwt_identity())
+        )
+        print("Generated HMAC message:", message)
+
+        valid, decoded_message = message_authentication.verify_hmac_signature(
+            encoded=message,
+            userID=str(get_jwt_identity())
+        )
+        print("Verified HMAC message:", valid, decoded_message)
+        """Retorna informações do usuário autenticado."""
         return jsonify({'id': get_jwt_identity()}), 200
 
     @bp.post('/auth/refresh')
