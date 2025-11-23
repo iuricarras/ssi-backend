@@ -10,6 +10,11 @@ from .api.auth.auth_service import AuthService
 from .api.register.register_service import RegService
 from .api.message.hmac import MessageAuthentication
 
+# --- NOVAS IMPORTAÇÕES PARA CARTEIRA ---
+from .api.carteira.carteira_service import CarteiraService
+from .api.carteira import register_carteira_routes
+# ---------------------------------------
+
 jwt = JWTManager()
 
 def create_app(config_class=Config) -> Flask:
@@ -52,6 +57,14 @@ def create_app(config_class=Config) -> Flask:
         db_name=db_name,
         config=config_class
     )
+    
+    # --- INSTANCIAR CARTEIRA SERVICE ---
+    carteira_service = CarteiraService(
+        mongo_client=mongo_client,
+        db_name=db_name,
+        config=config_class
+    )
+    # ----------------------------------
 
     message_authentication = MessageAuthentication(
         mongo_client=mongo_client,
@@ -65,6 +78,11 @@ def create_app(config_class=Config) -> Flask:
     register_reg_routes(api_blueprint, register_service)
 
     register_auth_routes(api_blueprint, auth_service, message_authentication)
+    
+    # --- REGISTAR ROTAS DA CARTEIRA ---
+    register_carteira_routes(api_blueprint, carteira_service)
+    # ----------------------------------
+    
     app.register_blueprint(api_blueprint)
 
 

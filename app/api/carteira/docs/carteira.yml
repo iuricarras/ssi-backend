@@ -1,0 +1,95 @@
+paths:
+  /carteira/verify-key:
+    post:
+      tags:
+        - Carteira
+      summary: Verifica a Chave Mestra para aceder aos dados da carteira.
+      security:
+        - jwt: []
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/MasterKey'
+      responses:
+        200:
+          description: Chave Mestra validada com sucesso.
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: Chave Mestra validada com sucesso.
+        400:
+          description: Chave mestra é obrigatória.
+        401:
+          description: Não autenticado ou Chave Mestra incorreta.
+          
+  /carteira/:
+    get:
+      tags:
+        - Carteira
+      summary: Retorna os dados da carteira do utilizador.
+      description: Requer validação prévia da Chave Mestra.
+      security:
+        - jwt: []
+      responses:
+        200:
+          description: Dados da carteira retornados com sucesso.
+          schema:
+            $ref: '#/definitions/CarteiraData'
+        401:
+          description: Não autenticado ou Chave Mestra não validada.
+
+  /carteira/update:
+    put:
+      tags:
+        - Carteira
+      summary: Atualiza e salva os dados da carteira digital.
+      security:
+        - jwt: []
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/CarteiraData'
+      responses:
+        200:
+          description: Dados da carteira atualizados com sucesso.
+        401:
+          description: Não autenticado.
+        500:
+          description: Erro interno ao salvar dados.
+
+definitions:
+  MasterKey:
+    type: object
+    required:
+      - masterKey
+    properties:
+      masterKey:
+        type: string
+        description: Chave Mestra do utilizador.
+        example: a_sua_chave_real_e_segura
+
+  CarteiraData:
+    type: object
+    properties:
+      personalData:
+        type: array
+        description: Lista de dados pessoais.
+        items:
+          type: object
+          properties:
+            name: {type: string, example: "Telemóvel"}
+            value: {type: string, example: "+351 927 087 206"}
+      certificates:
+        type: array
+        description: Lista de certificados.
+        items:
+          type: object
+          properties:
+            nome: {type: string, example: "Carta de Condução"}
+            emissão: {type: string, example: "25/01/2024"}
