@@ -209,3 +209,8 @@ __marimo__/
 
 cert.pem
 key.pem
+
+# Keys
+*.pem
+*.64
+*.bin

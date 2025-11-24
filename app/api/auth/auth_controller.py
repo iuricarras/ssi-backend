@@ -57,7 +57,6 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
 
     @bp.get('/user/profile')
     @jwt_required()
-    @swag_from(os.path.join(docs, 'profile.yml'))
     def user_profile():
         """Retorna informações básicas do utilizador (nome e email)."""
         user_id = str(get_jwt_identity())
@@ -117,6 +116,55 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
         resp = jsonify({'ok': True})
         set_access_cookies(resp, access)
         set_refresh_cookies(resp, refresh)
+        return resp, 200
+
+     # Endpoints para Assinatura Digital
+    @bp.post('/auth/signature/start')
+    @swag_from(os.path.join(docs, 'signature_start.yml'))
+    def auth_signature_start():
+        """Inicia o processo de autenticação por Assinatura Digital."""
+        data = request.get_json(silent=True) or {}
+        email = (data.get('email') or '').strip().lower()
+
+        if not email:
+            return jsonify({'status': 'ok'}), 200
+
+        result = auth_service.create_signature_challenge(email)
+
+        if result is None:
+            return jsonify({'error': 'failed_to_create_challenge'}), 500
+
+        return jsonify({
+            'status': 'ok',
+            'challenge_id': result['challenge_id'],
+            'nonce': result['nonce']
+        }), 200
+
+    @bp.post('/auth/signature/verify')
+    @swag_from(os.path.join(docs, 'auth_signature_verify.yml'))
+    def auth_signature_verify():
+        """Verifica assinatura digital e autentica a entidade credenciadora."""
+        data = request.get_json(silent=True) or {}
+        email = (data.get('email') or '').strip().lower()
+        challenge_id = data.get('challenge_id') or ''
+        signature = data.get('signature') or ''
+
+        if not all([email, challenge_id, signature]):
+            return jsonify({'error': 'missing_fields'}), 400
+
+        result = auth_service.verify_signature(email, challenge_id, signature)
+
+        if not result['success']:
+            return jsonify({'error': result['error']}), result['status']
+
+        user_id = result['user_id']
+        access = create_access_token(identity=str(user_id), fresh=True)
+        refresh = create_refresh_token(identity=str(user_id))
+
+        resp = jsonify({'ok': True})
+        set_access_cookies(resp, access)
+        set_refresh_cookies(resp, refresh)
+
         return resp, 200
 
     return bp

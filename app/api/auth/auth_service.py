@@ -8,11 +8,18 @@ from pymongo.collection import Collection
 from flask_mail import Mail, Message
 import os
 from pathlib import Path
+import base64 
+from cryptography.hazmat.primitives.asymmetric import ec 
+from cryptography.hazmat.primitives import hashes 
+from cryptography.hazmat.primitives import serialization 
+from cryptography.exceptions import InvalidSignature
 
 class AuthService:
     def __init__(self, mongo_client: MongoClient, db_name: str, config, mail_service: Mail):
         self.db = mongo_client[db_name]
         self.challenges: Collection = self.db["otp_challenges"]
+        self.signature_challenges = self.db["signature_challenges"]
+        self.user_data: Collection = self.db["user"]
         self.config = config
         self.mail_service = mail_service 
 
@@ -21,6 +28,8 @@ class AuthService:
     def _setup_indexes(self):
         self.challenges.create_index("expires_at", expireAfterSeconds=0)
         self.challenges.create_index("challenge_id", unique=True)
+        self.signature_challenges.create_index("expires_at", expireAfterSeconds=0)
+        self.signature_challenges.create_index("challenge_id", unique=True)
 
     def _otp_hash_once(self, code: str, challenge_id: str, email: str) -> str:
         msg = f"{challenge_id}:{email}:{code}".encode()
@@ -140,3 +149,93 @@ class AuthService:
         )
 
         return {"success": True, "user_id": email}
+
+    # Assinatura Digital 
+    def create_signature_challenge(self, email: str) -> Optional[Dict[str, Any]]:
+        self.signature_challenges.delete_many({"email": email})
+        
+        nonce_bytes = secrets.token_bytes(32) 
+        nonce_base64 = base64.b64encode(nonce_bytes).decode('utf-8')
+        challenge_id = secrets.token_urlsafe(16)
+
+        now = datetime.utcnow()
+        expires_at = now + timedelta(seconds=self.config["NONCE_TTL_SEC"])
+
+        challenge_doc = {
+            "challenge_id": challenge_id,
+            "email": email,
+            "nonce": nonce_base64, 
+            "consumed": False,
+            "created_at": now,
+            "expires_at": expires_at
+        }
+
+        try:
+            self.signature_challenges.insert_one(challenge_doc)
+            return {
+                "challenge_id": challenge_id,
+                "nonce": nonce_base64
+            }
+        except Exception as e:
+            print(f"Erro ao salvar challenge de assinatura: {e}")
+            return None
+
+    def verify_signature(self, email: str, challenge_id: str, signature_base64: str) -> Dict[str, Any]:
+        """
+        Verifica a assinatura do nonce usando a chave pública do usuário.
+        """
+        now = datetime.utcnow()
+
+        challenge = self.signature_challenges.find_one({
+            "challenge_id": challenge_id,
+            "email": email,
+            "expires_at": {"$gt": now}
+        })
+
+        if not challenge:
+            return {"success": False, "error": "invalid_or_expired_challenge", "status": 400}
+
+        if challenge.get("consumed"):
+            return {"success": False, "error": "challenge_already_used", "status": 400}
+
+        user_record = self.user_data.find_one({"email": email})
+        if not user_record:
+            return {"success": False, "error": "unknown_entity", "status": 404}
+
+        public_key_pem = user_record.get("signkey")
+        if not public_key_pem:
+            return {"success": False, "error": "missing_public_key", "status": 500}
+
+        nonce_bytes = base64.b64decode(challenge.get("nonce"))
+        
+        try:
+            signature_bytes = base64.b64decode(signature_base64)
+        except Exception:
+            return {"success": False, "error": "invalid_signature_format", "status": 400}
+
+        try:
+            public_key = serialization.load_pem_public_key(
+                public_key_pem.encode('utf-8')
+            )
+        except Exception:
+            return {"success": False, "error": "invalid_public_key", "status": 400}
+        
+        try:
+            public_key.verify(
+                signature_bytes,
+                nonce_bytes,
+                ec.ECDSA(hashes.SHA256())
+            )
+            
+            self.signature_challenges.update_one(
+                {"challenge_id": challenge_id},
+                {"$set": {"consumed": True}}
+            )
+            return {"success": True, "user_id": email}
+
+        except InvalidSignature:
+            return {"success": False, "error": "invalid_signature", "status": 400}
+
+        except Exception as e:
+            print(f"Erro na verificação de assinatura: {e}")
+            return {"success": False, "error": "internal_error", "status": 500}

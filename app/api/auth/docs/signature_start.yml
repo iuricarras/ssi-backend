@@ -1,0 +1,71 @@
+swagger: '2.0'
+info:
+  title: Início da Autenticação por Assinatura Digital
+  description: Endpoint responsável por iniciar o processo de autenticação forte para entidades credenciadoras.
+  version: "1.0"
+
+tags:
+  - Assinatura Digital
+
+summary: Inicia o processo de autenticação digital
+description: >
+  Recebe o e-mail da entidade credenciadora e gera um nonce único e um challenge_id.
+  O nonce deve ser assinado pela entidade utilizando sua chave privada.
+  Na etapa seguinte, a assinatura será verificada no endpoint /auth/signature/verify.
+
+consumes:
+  - application/json
+produces:
+  - application/json
+
+parameters:
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      properties:
+        email:
+          type: string
+          example: entidade@exemplo.pt
+      required:
+        - email
+
+responses:
+  200:
+    description: Nonce gerado com sucesso
+    schema:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        challenge_id:
+          type: string
+          example: "Fm2h3JkPQ9sK1tVw"
+        nonce:
+          type: string
+          example: "QWxhZGRpbjpvcGVuIHNlc2FtZQ=="
+    examples:
+      application/json:
+        status: ok
+        challenge_id: "Fm2h3JkPQ9sK1tVw"
+        nonce: "U0dWc2JHOGdUV1J5YjNKc2FXNWtiM1Z1YzI5amEzTT0="
+
+  400:
+    description: Requisição inválida
+    schema:
+      type: object
+      properties:
+        error:
+          type: string
+          example: email_required
+
+  500:
+    description: Erro interno ao criar o challenge
+    schema:
+      type: object
+      properties:
+        error:
+          type: string
+          example: failed_to_create_challenge

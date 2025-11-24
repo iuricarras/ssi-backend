@@ -1,0 +1,88 @@
+swagger: '2.0'
+info:
+  title: Verificação da Assinatura Digital
+  description: Endpoint responsável por validar a assinatura digital do nonce e autenticar a entidade credenciadora.
+  version: "1.0"
+
+tags:
+  - Assinatura Digital
+
+summary: Verifica assinatura digital e retorna JWTs
+description: >
+  Verifica a assinatura digital do nonce previamente enviado pela API.
+  Se a assinatura for válida, o servidor autentica a entidade credenciadora.
+
+consumes:
+  - application/json
+produces:
+  - application/json
+
+parameters:
+  - in: body
+    name: body
+    required: true
+    schema:
+      type: object
+      properties:
+        email:
+          type: string
+          example: entidade@exemplo.pt
+        challenge_id:
+          type: string
+          example: "Fm2h3JkPQ9sK1tVw"
+        signature:
+          type: string
+          description: Assinatura digital do nonce (Base64)
+          example: "MEYCIQDTc89t3Vh7..."
+      required:
+        - email
+        - challenge_id
+        - signature
+
+responses:
+  200:
+    description: Assinatura validada e JWTs gerados
+    schema:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: true
+        access_token:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        refresh_token:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    examples:
+      application/json:
+        ok: true
+        access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        refresh_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+  400:
+    description: Assinatura inválida ou desafio expirado
+    schema:
+      type: object
+      properties:
+        error:
+          type: string
+          example: invalid_signature
+
+  404:
+    description: Entidade não encontrada no sistema
+    schema:
+      type: object
+      properties:
+        error:
+          type: string
+          example: unknown_entity
+
+  500:
+    description: Erro interno ao validar assinatura
+    schema:
+      type: object
+      properties:
+        error:
+          type: string
+          example: internal_error

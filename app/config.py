@@ -26,6 +26,11 @@ class Config:
     OTP_TTL_SEC = int(os.environ.get("OTP_TTL_SEC", 300))
     OTP_DIGITS = int(os.environ.get("OTP_DIGITS", 6))
 
+    # Assinatura Digital
+    NONCE_TTL_SEC = int(os.environ.get("NONCE_TTL_SEC", 300))
+    SIGNATURE_ALG = os.environ.get("SIGNATURE_ALG", "ECDSA_SHA256")
+    SIGNATURE_KEY_TYPE = os.environ.get("SIGNATURE_KEY_TYPE", "EC_P256")
+
     # Email
     MAIL_SERVER = os.environ.get("MAIL_SERVER")
     MAIL_PORT = int(os.environ.get("MAIL_PORT", 587))
