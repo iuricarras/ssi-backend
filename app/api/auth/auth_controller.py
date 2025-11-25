@@ -2,6 +2,7 @@ from flask import request, jsonify, Blueprint
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
+    get_jwt,
     jwt_required,
     get_jwt_identity,
     set_access_cookies,
@@ -48,8 +49,8 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
         if not result['success']:
             return jsonify({'error': result['error']}), result['status']
         user_id = result['user_id']
-        access = create_access_token(identity=str(user_id), fresh=True)
-        refresh = create_refresh_token(identity=str(user_id))
+        access = create_access_token(identity=str(user_id), additional_claims={"is_ec": False}, fresh=True)
+        refresh = create_refresh_token(identity=str(user_id), additional_claims={"is_ec": False})
         resp = jsonify({'ok': True})
         set_access_cookies(resp, access)
         set_refresh_cookies(resp, refresh)
@@ -74,7 +75,16 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
     @jwt_required()
     @swag_from(os.path.join(docs, 'me.yml'))
     def me():
-        
+        #TODO: Adicionar HMAC para EC
+        claims = get_jwt()
+        email = get_jwt_identity()
+        is_ec = claims.get("is_ec", False)
+        if is_ec:
+            return jsonify({
+                'id': email,
+                'is_ec': True
+            }), 200
+
         message = message_authentication.generate_hmac_signature(
             message=str(get_jwt_identity()),
             userID=str(get_jwt_identity())
@@ -95,7 +105,7 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
     def refresh():
         """Gera novo access token usando refresh token."""
         uid = get_jwt_identity()
-        new_access = create_access_token(identity=uid, fresh=False)
+        new_access = create_access_token(identity=uid, additional_claims={"is_ec": False}, fresh=False)
         resp = jsonify({'ok': True})
         set_access_cookies(resp, new_access)
         return resp, 200
@@ -111,8 +121,8 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
     @swag_from(os.path.join(docs, 'swagger_login.yml'))
     @bp.post('/auth/swagger-login')
     def swagger_login():
-        access = create_access_token(identity="swagger", fresh=True)
-        refresh = create_refresh_token(identity="swagger")
+        access = create_access_token(identity="swagger", additional_claims={"is_ec": False}, fresh=True)
+        refresh = create_refresh_token(identity="swagger", additional_claims={"is_ec": False})
         resp = jsonify({'ok': True})
         set_access_cookies(resp, access)
         set_refresh_cookies(resp, refresh)
@@ -158,8 +168,8 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
             return jsonify({'error': result['error']}), result['status']
 
         user_id = result['user_id']
-        access = create_access_token(identity=str(user_id), fresh=True)
-        refresh = create_refresh_token(identity=str(user_id))
+        access = create_access_token(identity=str(user_id), additional_claims={"is_ec": True}, fresh=True)
+        refresh = create_refresh_token(identity=str(user_id), additional_claims={"is_ec": True})
 
         resp = jsonify({'ok': True})
         set_access_cookies(resp, access)

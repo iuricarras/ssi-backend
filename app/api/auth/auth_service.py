@@ -9,10 +9,10 @@ from flask_mail import Mail, Message
 import os
 from pathlib import Path
 import base64 
-from cryptography.hazmat.primitives.asymmetric import ec 
 from cryptography.hazmat.primitives import hashes 
 from cryptography.hazmat.primitives import serialization 
 from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric import padding
 
 class AuthService:
     def __init__(self, mongo_client: MongoClient, db_name: str, config, mail_service: Mail):
@@ -192,49 +192,45 @@ class AuthService:
             "expires_at": {"$gt": now}
         })
 
-        if not challenge:
+        if not challenge or challenge.get("consumed"):
             return {"success": False, "error": "invalid_or_expired_challenge", "status": 400}
-
-        if challenge.get("consumed"):
-            return {"success": False, "error": "challenge_already_used", "status": 400}
 
         user_record = self.user_data.find_one({"email": email})
         if not user_record:
-            return {"success": False, "error": "unknown_entity", "status": 404}
+            return {"success": False, "error": "invalid_or_expired_challenge", "status": 400}
 
         public_key_pem = user_record.get("signkey")
         if not public_key_pem:
-            return {"success": False, "error": "missing_public_key", "status": 500}
+            return {"success": False, "error": "invalid_or_expired_challenge", "status": 400}
 
-        nonce_bytes = base64.b64decode(challenge.get("nonce"))
-        
+        try:
+            nonce_bytes = base64.b64decode(challenge.get("nonce"))
+        except Exception:
+            return {"success": False, "error": "invalid_or_expired_challenge", "status": 400}
+
         try:
             signature_bytes = base64.b64decode(signature_base64)
         except Exception:
-            return {"success": False, "error": "invalid_signature_format", "status": 400}
+            return {"success": False, "error": "invalid_or_expired_challenge", "status": 400}
 
         try:
-            public_key = serialization.load_pem_public_key(
-                public_key_pem.encode('utf-8')
-            )
+            public_key = serialization.load_pem_public_key(public_key_pem.encode("utf-8"))
         except Exception:
-            return {"success": False, "error": "invalid_public_key", "status": 400}
-        
+            return {"success": False, "error": "invalid_or_expired_challenge", "status": 400}
+
         try:
             public_key.verify(
                 signature_bytes,
                 nonce_bytes,
-                ec.ECDSA(hashes.SHA256())
+                padding.PKCS1v15(),
+                hashes.SHA256()
             )
-            
-            self.signature_challenges.update_one(
-                {"challenge_id": challenge_id},
-                {"$set": {"consumed": True}}
-            )
+            self.signature_challenges.update_one({"challenge_id": challenge_id}, {"$set": {"consumed": True}})
+
             return {"success": True, "user_id": email}
 
         except InvalidSignature:
-            return {"success": False, "error": "invalid_signature", "status": 400}
+            return {"success": False, "error": "invalid_or_expired_challenge", "status": 400}
 
         except Exception as e:
             print(f"Erro na verificação de assinatura: {e}")
