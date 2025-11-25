@@ -1,3 +1,6 @@
+import hashlib
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
 class CarteiraService:
     """
     Serviço responsável pela lógica de negócio da carteira digital:
@@ -22,17 +25,36 @@ class CarteiraService:
             return True
         return False
 
-    def get_carteira_data(self, user_id: str) -> dict:
+    def get_carteira_data(self, user_id: str, master_key: str) -> dict:
         """
         Busca os dados do DB e retorna-os, desencriptados ou com o mock inicial.
         """
         carteira_doc = self.carteiras_collection.find_one({'user_id': user_id})
-
-        if carteira_doc:
-            return carteira_doc.get('data', self._get_initial_data())
-        else:
+   
+        if not carteira_doc:
             return self._get_initial_data()
-            
+
+        ## Decifrar os dados
+        data_str = self._get_encrypted_data(
+            data_encrypted=carteira_doc.get('data'),
+            master_key=master_key,
+            salt=carteira_doc.get('salt'))
+
+        # Gerar novo nounce para cifrar novamente
+        data_reencrypted, nounce = self._encrypt_data(data_str, master_key)
+        # Atualizar dados cifrados e nounce no MongoDB
+        self.carteiras_collection.update_one(
+            {'user_id': user_id},
+            {'$set': {
+                'data': data_reencrypted,
+                'salt': nounce,
+            }},
+            upsert=True
+        )
+        
+        return data_str
+     
+    
     def update_carteira_data(self, user_id: str, data: dict) -> bool:
         """
         Recebe a lista de dados, ENCRIPTA-a e SALVA no MongoDB.
@@ -40,10 +62,11 @@ class CarteiraService:
         data_to_save = self._reconstruct_data_structure(data)
         
         try:
+            data_encrypted, nounce = self._encrypt_data(data_to_save, master_key)
             # Usar upsert=True: insere se não existir, atualiza se existir
             self.carteiras_collection.update_one(
                 {'user_id': user_id},
-                {'$set': {'data': data_to_save}},
+                {'$set': {'data': data_encrypted, 'salt': nounce}},
                 upsert=True
             )
             return True
@@ -94,3 +117,42 @@ class CarteiraService:
             "personalData": new_personal_data,
             "certificates": list(new_certificates_map.values())
         }
+
+
+    def _get_encrypted_data(self, data_encrypted: bytes, master_key: str, salt: str) -> str:
+        """ Descifra os dados da carteira com a chave mestra. """
+        secret = f"{master_key}.{salt}"
+        h = hashlib.new('sha256')
+        h.update(secret.encode('utf-8'))
+        secret = h.digest()
+
+        key = secret[:16]
+        iv = secret[16:]
+
+        algorithm = algorithms.AES(key)
+        mode = modes.CBC(iv)
+
+        cipher = Cipher(algorithm, mode)
+        decryptor = cipher.decryptor()  
+
+        data_decrypted = decryptor.update(data_encrypted) + decryptor.finalize()
+        data_str = data_decrypted.decode('utf-8')
+        return data_str
+
+    def _encrypt_data(self, data_str: str, master_key: str) -> tuple:
+        """ Cifra os dados da carteira com a chave mestra. """
+        nounce = Random.get_random_bytes(16)
+        h.update(f"{master_key}{nounce.hex()}".encode('utf-8'))
+
+        enc_secret = h.digest()
+
+        enc_key = enc_secret[:16]
+        enc_iv = enc_secret[16:]
+
+        enc_algorithm = algorithms.AES(enc_key)
+        enc_mode = modes.CBC(enc_iv)
+
+        enc_cipher = Cipher(enc_algorithm, enc_mode)
+        encryptor = enc_cipher.encryptor()  
+        data_reencrypted = encryptor.update(data_str.encode('utf-8')) + encryptor.finalize()
+        return data_reencrypted, nounce.hex()

@@ -87,13 +87,15 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
 
         message = message_authentication.generate_hmac_signature(
             message=str(get_jwt_identity()),
-            userID=str(get_jwt_identity())
+            userID=str(get_jwt_identity()),
+            isEC=is_ec
         )
         print("Generated HMAC message:", message)
 
         valid, decoded_message = message_authentication.verify_hmac_signature(
             encoded=message,
-            userID=str(get_jwt_identity())
+            userID=str(get_jwt_identity()),
+            isEC=is_ec
         )
         print("Verified HMAC message:", valid, decoded_message)
         """Retorna informações do usuário autenticado (principalmente ID)."""

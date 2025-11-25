@@ -18,24 +18,28 @@ def get_current_user_id():
     except Exception:
         return None 
 
-@carteira_bp.route('/verify-key', methods=['POST'])
-@jwt_required()
-@swag_from(os.path.join('docs', 'carteira.yml')) 
-def verify_key():
-    user_id = get_current_user_id()
-    if not user_id:
-        return jsonify({"message": "Não autenticado."}), 401
+
+### Não é necessário este endpoint
+### A chave é verificada e utilizada sempre que o utilizador tenta aceder aos dados 
+### / , /update , etc.
+# @carteira_bp.route('/verify-key', methods=['POST'])
+# @jwt_required()
+# @swag_from(os.path.join('docs', 'carteira.yml')) 
+# def verify_key():
+#     user_id = get_current_user_id()
+#     if not user_id:
+#         return jsonify({"message": "Não autenticado."}), 401
     
-    data = request.get_json()
-    master_key = data.get('masterKey')
+#     data = request.get_json()
+#     master_key = data.get('masterKey')
 
-    if not master_key:
-        return jsonify({"message": "Chave mestra é obrigatória."}), 400
+#     if not master_key:
+#         return jsonify({"message": "Chave mestra é obrigatória."}), 400
 
-    if service.verify_master_key(user_id, master_key):
-        return jsonify({"message": "Chave Mestra validada com sucesso."}), 200
-    else:
-        return jsonify({"message": "Chave Mestra incorreta. Tente novamente."}), 401 
+#     if service.verify_master_key(user_id, master_key):
+#         return jsonify({"message": "Chave Mestra validada com sucesso."}), 200
+#     else:
+#         return jsonify({"message": "Chave Mestra incorreta. Tente novamente."}), 401 
 
 @carteira_bp.route('/', methods=['GET'])
 @jwt_required()
@@ -44,7 +48,10 @@ def get_carteira():
     if not user_id:
         return jsonify({"message": "Não autenticado."}), 401
     
-    carteira_data = service.get_carteira_data(user_id)
+    data = request.get_json()
+    master_key = data.get('masterKey')
+
+    carteira_data = service.get_carteira_data(user_id, master_key)
     return jsonify(carteira_data), 200
 
 @carteira_bp.route('/update', methods=['PUT'])
@@ -55,8 +62,10 @@ def update_carteira():
         return jsonify({"message": "Não autenticado."}), 401
         
     data = request.get_json()
+    master_key = data.get('masterKey')
+    data = data.get('data')    
     
-    if service.update_carteira_data(user_id, data):
+    if service.update_carteira_data(user_id, data, master_key):
         return jsonify({"message": "Dados atualizados."}), 200
     else:
         return jsonify({"message": "Erro interno ao salvar dados."}), 500

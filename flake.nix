@@ -23,6 +23,7 @@
           python-pkgs.pymongo
           python-pkgs.python-dotenv
           python-pkgs.pyjwt
+          python-pkgs.cryptography
         ]))
         mongodb-compass
         postman
