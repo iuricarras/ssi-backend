@@ -14,6 +14,8 @@ from .api.message.hmac import MessageAuthentication
 from .api.carteira.carteira_service import CarteiraService
 from .api.carteira import register_carteira_routes
 # ---------------------------------------
+from .api.user import register_user_routes
+
 
 jwt = JWTManager()
 
@@ -82,6 +84,9 @@ def create_app(config_class=Config) -> Flask:
     # --- REGISTAR ROTAS DA CARTEIRA ---
     register_carteira_routes(api_blueprint, carteira_service)
     # ----------------------------------
+    
+    register_user_routes(api_blueprint, mongo_client, db_name)
+
     
     app.register_blueprint(api_blueprint)
 
