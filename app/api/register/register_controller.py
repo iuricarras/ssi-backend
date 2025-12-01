@@ -24,5 +24,24 @@ def create_register_controller(reg_service):
             return jsonify({'error': result['error']}), result['status']
         
         return jsonify({'message': result['message']}), result['status']
+    
+
+
+    @bp.post('/register/user-register')
+    def register_user():
+        """Regista um novo utilizador normal."""
+        data = request.get_json(silent=True)
+
+        if not data:
+            return jsonify({'error': 'Os dados devem ser JSON.'}), 400
+
+        result = reg_service.register_user(data)
+
+        if not result['success']:
+            return jsonify({'error': result['error']}), result['status']
+
+        return jsonify({'message': result['message']}), result['status']
+
 
     return bp
+

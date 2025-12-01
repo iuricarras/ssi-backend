@@ -64,3 +64,31 @@ class RegService:
         except Exception as e:
             print(f"Erro ao inserir EC na DB: {e}")
             return {"success": False, "error": "Erro interno ao registar.", "status": 500}
+
+    def register_user(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        username = data.get("username")
+        email = data.get("email")
+        nome = data.get("nome")
+
+        if not username or not email or not nome:
+            return {"success": False, "error": "Campos obrigatórios em falta.", "status": 400}
+
+        if self.user_data.find_one({"username": username}):
+            return {"success": False, "error": "Username já existe.", "status": 409}
+
+        if self.user_data.find_one({"email": email}):
+            return {"success": False, "error": "Email já registado.", "status": 409}
+
+        doc = {
+            "username": username,
+            "email": email,
+            "nome": nome,
+            "created_at": datetime.utcnow()
+        }
+
+        try:
+            self.user_data.insert_one(doc)
+            return {"success": True, "message": "Utilizador registado com sucesso!", "status": 201}
+        except Exception as e:
+            print(f"Erro ao inserir utilizador: {e}")
+            return {"success": False, "error": "Erro interno ao registar utilizador.", "status": 500}
