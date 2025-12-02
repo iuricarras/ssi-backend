@@ -139,7 +139,7 @@ class VerifyService:
         return {'success': True, 'message': 'Verificação aceita com sucesso.', 'status': 200}
 
 
-    def get_verifications(self, user_id: str, verification_id: str, data: dict) -> dict:
+    def get_verification(self, user_id: str, verification_id: str, data: dict) -> dict:
         """
         Lógica para obter uma verificação a partir do ID.
         """
@@ -209,6 +209,32 @@ class VerifyService:
         return {
             'success': True,
             'pending_verifications': pending_verifications,
+            'status': 200
+        }
+
+    def get_all_verifications(self, user_id: str) -> dict:
+        """
+        Lógica para obter todas as verificações solicitadas pelo utilizador atual.
+        """
+
+        verifications_cursor = self.verifications.find({
+            'requester_user_id': user_id
+        })
+
+        verifications = []
+        for verification in verifications_cursor:
+            verifications.append({
+                'verification_id': verification['verification_id'],
+                'verification_user_id': verification['verification_user_id'],
+                'verification_data_type': verification['verification_data_type'],
+                'accepted': verification['accepted'],
+                'created_at': verification['created_at'],
+                'expires_at': verification['expires_at']
+            })
+
+        return {
+            'success': True,
+            'verifications': verifications,
             'status': 200
         }
 

@@ -79,12 +79,7 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
         claims = get_jwt()
         email = get_jwt_identity()
         is_ec = claims.get("is_ec", False)
-        if is_ec:
-            return jsonify({
-                'id': email,
-                'is_ec': True
-            }), 200
-
+        
         message = message_authentication.generate_hmac_signature(
             message=str(get_jwt_identity()),
             userID=str(get_jwt_identity()),

@@ -74,6 +74,10 @@ class AuthService:
         return template_html
 
     def create_otp_challenge(self, email: str, ip: str) -> Optional[Dict[str, Any]]:
+        user = self.user_data.find_one({"email": email})
+        if not user:
+            return None
+
         self.challenges.delete_many({"email": email})
         code = self._generate_otp_code()
         challenge_id = secrets.token_urlsafe(16)

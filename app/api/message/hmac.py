@@ -16,9 +16,10 @@ class MessageAuthentication():
     def _create_hmac_secret(self, userID: str, isEC: bool) -> str:
         if isEC:
             user = self.signature_challenges.find_one({"email": userID}, sort=[('_id', DESCENDING)] )
+            secret = f"{userID}.{user.get('nonce')}"
         else:
             user = self.challenges.find_one({"email": userID}, sort=[('_id', DESCENDING)] )
-        secret = f"{userID}.{user.get('code_h')}"
+            secret = f"{userID}.{user.get('code_h')}"
         h = hashlib.new('sha256')
         h.update(secret.encode('utf-8'))
         return h.hexdigest()

@@ -58,18 +58,18 @@ def create_verify_controller(verify_service):
         user_id = get_current_user_id()
         data = request.get_json(silent=True)
 
-        result = verify_service.get_verifications(user_id, id, data)
+        result = verify_service.get_verification(user_id, id, data)
 
         if not result['success']:
             return jsonify({'error': result['error']}), result['status']
 
-        return jsonify({'verifications': result['verifications']}), result['status']
+        return jsonify({'verification': result['verification']}), result['status']
     
 
     @bp.get('/verify/get-pending')
     @jwt_required()
     def get_pending_verifications():
-        """Obtém as verificações pendentes para o utilizador atual."""
+        """Obtém as verificações pendentes do verificador."""
         user_id = get_current_user_id()
 
         result = verify_service.get_pending_verifications(user_id)
@@ -78,5 +78,19 @@ def create_verify_controller(verify_service):
             return jsonify({'error': result['error']}), result['status']
 
         return jsonify({'pending_verifications': result['pending_verifications']}), result['status']
+
+
+    @dbp.get('/verify/get-all-verifications')
+    @jwt_required()
+    def get_all_verifications():
+        """Obtém todas as verificações."""
+        user_id = get_current_user_id()
+
+        result = verify_service.get_all_verifications(user_id)
+
+        if not result['success']:
+            return jsonify({'error': result['error']}), result['status']
+
+        return jsonify({'all_verifications': result['all_verifications']}), result['status']
     return bp
 

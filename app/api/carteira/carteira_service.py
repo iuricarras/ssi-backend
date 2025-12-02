@@ -60,13 +60,14 @@ class CarteiraService:
         Recebe a lista de dados, ENCRIPTA-a e SALVA no MongoDB.
         """
         data_to_save = self._reconstruct_data_structure(data)
+        data_type = self._get_data_types(data)
         
         try:
             data_encrypted, nounce = self._encrypt_data(data_to_save, master_key)
             # Usar upsert=True: insere se não existir, atualiza se existir
             self.carteiras_collection.update_one(
                 {'user_id': user_id},
-                {'$set': {'data': data_encrypted, 'salt': nounce}},
+                {'$set': {'type': data_type, 'data': data_encrypted, 'salt': nounce}},
                 upsert=True
             )
             return True
@@ -93,7 +94,19 @@ class CarteiraService:
                 }
             ]
         }
-        
+    
+    def _get_data_types(self, data: list) -> dict:
+        """ Retorna os tipos de dados presentes na carteira. """
+        types = {'personalData': [], 'certificates': []}
+
+        for item in data:
+            if item.get('tipo') == 'personalData':
+                types['personalData'].append(item.get('chave'))
+            elif item.get('tipo') == 'certificate':
+                types['certificates'].append(item.get('nome'))
+
+        return types
+
     def _reconstruct_data_structure(self, data: list) -> dict:
         """ Converte a lista plana do frontend para a estrutura de dicionário. """
         new_personal_data = []
