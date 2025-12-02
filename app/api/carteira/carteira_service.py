@@ -142,6 +142,7 @@ class CarteiraService:
     def _encrypt_data(self, data_str: str, master_key: str) -> tuple:
         """ Cifra os dados da carteira com a chave mestra. """
         nounce = Random.get_random_bytes(16)
+        h = hashlib.new('sha256')
         h.update(f"{master_key}{nounce.hex()}".encode('utf-8'))
 
         enc_secret = h.digest()

@@ -18,7 +18,7 @@ class Config:
     JWT_COOKIE_CSRF_PROTECT = False
 
     # MongoDB
-    MONGO_URI = "mongodb://root:bitsofme2025@2.82.209.19:27017/"
+    MONGO_URI = os.environ.get("MONGO_URI")
     MONGO_DB_NAME = os.environ.get("MONGO_DB_NAME", "bits_of_me")
 
     # OTP

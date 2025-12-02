@@ -16,6 +16,8 @@ from .api.carteira import register_carteira_routes
 # ---------------------------------------
 from .api.user import register_user_routes
 
+from .api.verify.verify_service import VerifyService
+
 
 jwt = JWTManager()
 
@@ -68,6 +70,12 @@ def create_app(config_class=Config) -> Flask:
     )
     # ----------------------------------
 
+    verify_service = VerifyService(
+        mongo_client=mongo_client,
+        db_name=db_name,
+        config=config_class
+    )
+
     message_authentication = MessageAuthentication(
         mongo_client=mongo_client,
         db_name=db_name
@@ -77,6 +85,8 @@ def create_app(config_class=Config) -> Flask:
     from .api import api_blueprint
     from .api.auth import register_auth_routes
     from .api.register import register_reg_routes
+    from .api.verify import register_ver_routes
+
     register_reg_routes(api_blueprint, register_service)
 
     register_auth_routes(api_blueprint, auth_service, message_authentication)
@@ -87,7 +97,8 @@ def create_app(config_class=Config) -> Flask:
     
     register_user_routes(api_blueprint, mongo_client, db_name)
 
-    
+    register_ver_routes(api_blueprint, verify_service)
+
     app.register_blueprint(api_blueprint)
 
 
