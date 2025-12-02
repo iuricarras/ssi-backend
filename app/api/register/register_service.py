@@ -3,6 +3,7 @@ from pymongo.collection import Collection
 from pymongo.errors import DuplicateKeyError
 from typing import Dict, Any
 from datetime import datetime
+import secrets
 
 class RegService:
     def __init__(self, mongo_client: MongoClient, db_name: str, config):

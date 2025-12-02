@@ -49,7 +49,7 @@ class VerifyService:
 
         # Criar um novo documento de verificação
         verification_doc = {
-            'verification_id': Random.get_random_string(32),
+            'verification_id': secrets.token_urlsafe(16),
             'requester_user_id': user_id,
             'verification_user_id': verification_user,
             'verification_data_type': verification_data_type,
@@ -132,6 +132,9 @@ class VerifyService:
                 'salt': nounce
             }}
         )
+
+
+        ##ENVIAR EMAIL 
 
         return {'success': True, 'message': 'Verificação aceita com sucesso.', 'status': 200}
 
