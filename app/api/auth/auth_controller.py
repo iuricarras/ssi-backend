@@ -75,7 +75,6 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
     @jwt_required()
     @swag_from(os.path.join(docs, 'me.yml'))
     def me():
-        #TODO: Adicionar HMAC para EC
         claims = get_jwt()
         email = get_jwt_identity()
         is_ec = claims.get("is_ec", False)
