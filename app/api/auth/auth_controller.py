@@ -148,7 +148,7 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
         }), 200
 
     @bp.post('/auth/signature/verify')
-    @swag_from(os.path.join(docs, 'auth_signature_verify.yml'))
+    @swag_from(os.path.join(docs, 'signature_verify.yml'))
     def auth_signature_verify():
         """Verifica assinatura digital e autentica a entidade credenciadora."""
         data = request.get_json(silent=True) or {}

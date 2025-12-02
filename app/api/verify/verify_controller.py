@@ -80,7 +80,7 @@ def create_verify_controller(verify_service):
         return jsonify({'pending_verifications': result['pending_verifications']}), result['status']
 
 
-    @dbp.get('/verify/get-all-verifications')
+    @bp.get('/verify/get-all-verifications')
     @jwt_required()
     def get_all_verifications():
         """Obtém todas as verificações."""
