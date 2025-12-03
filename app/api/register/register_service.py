@@ -49,7 +49,7 @@ class RegService:
             "created_at": datetime.utcnow(),
             "authenticationKey": authentication_key,
             "signkey": signkey,
-            "name": name,
+            "nome": name,
             "tipo": tipo,
             "tipoOutro": tipo_outro,
             "nif": nif,

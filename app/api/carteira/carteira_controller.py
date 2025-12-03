@@ -18,32 +18,13 @@ def get_current_user_id():
     except Exception:
         return None 
 
-
-### Não é necessário este endpoint
-### A chave é verificada e utilizada sempre que o utilizador tenta aceder aos dados 
-### / , /update , etc.
-# @carteira_bp.route('/verify-key', methods=['POST'])
-# @jwt_required()
-# @swag_from(os.path.join('docs', 'carteira.yml')) 
-# def verify_key():
-#     user_id = get_current_user_id()
-#     if not user_id:
-#         return jsonify({"message": "Não autenticado."}), 401
-    
-#     data = request.get_json()
-#     master_key = data.get('masterKey')
-
-#     if not master_key:
-#         return jsonify({"message": "Chave mestra é obrigatória."}), 400
-
-#     if service.verify_master_key(user_id, master_key):
-#         return jsonify({"message": "Chave Mestra validada com sucesso."}), 200
-#     else:
-#         return jsonify({"message": "Chave Mestra incorreta. Tente novamente."}), 401 
-
-@carteira_bp.route('/', methods=['GET'])
+@carteira_bp.route('/', methods=['POST'])
 @jwt_required()
 def get_carteira():
+    """
+    Obtém os dados da carteira.
+    Requer 'masterKey' no corpo da requisição.
+    """
     user_id = get_current_user_id()
     if not user_id:
         return jsonify({"message": "Não autenticado."}), 401
@@ -51,12 +32,20 @@ def get_carteira():
     data = request.get_json()
     master_key = data.get('masterKey')
 
-    carteira_data = service.get_carteira_data(user_id, master_key)
-    return jsonify(carteira_data), 200
+
+    try:
+        carteira_data = service.get_carteira_data(user_id, master_key)
+        return jsonify(carteira_data), 200
+    except ValueError:
+        return jsonify({"message": "Erro de decifra. Chave Mestra inválida."}), 400
 
 @carteira_bp.route('/update', methods=['PUT'])
 @jwt_required()
 def update_carteira():
+    """
+    Atualiza os dados da carteira.
+    Requer 'masterKey' e 'data' no corpo da requisição.
+    """
     user_id = get_current_user_id()
     if not user_id:
         return jsonify({"message": "Não autenticado."}), 401
@@ -65,7 +54,43 @@ def update_carteira():
     master_key = data.get('masterKey')
     data = data.get('data')    
     
-    if service.update_carteira_data(user_id, data, master_key):
-        return jsonify({"message": "Dados atualizados."}), 200
-    else:
-        return jsonify({"message": "Erro interno ao salvar dados."}), 500
+    try:
+        if service.update_carteira_data(user_id, data, master_key):
+            return jsonify({"message": "Dados atualizados."}), 200
+        else:
+            return jsonify({"message": "Erro interno ao guardar os dados."}), 500
+    except ValueError:
+        return jsonify({"message": "Chave Mestra inválida."}), 400
+
+
+
+@carteira_bp.route('/user/<username>/profile', methods=['GET'])
+@jwt_required()
+def get_user_profile(username):
+    """
+    Retorna o perfil do utilizador com base no username.
+    """
+    user = service.get_user_by_username(username)
+    if not user:
+        return jsonify({"message": "Utilizador não encontrado."}), 404
+    return jsonify(user), 200
+
+@carteira_bp.route('/user/<username>', methods=['GET'])
+@jwt_required()
+def get_user_carteira(username):
+    """
+    Retorna os dados públicos (dados pessoais e certificados) da carteira de um utilizador.
+    """
+    user = service.get_user_by_username(username)
+    if not user:
+        return jsonify({"message": "Utilizador não encontrado."}), 404
+
+    carteira_data = service.get_carteira_public_data(user['email'])
+
+    response_data = {
+        "personalData": carteira_data.get("personalData", []),
+        "certificates": carteira_data.get("certificates", [])
+    }
+    
+    return jsonify(response_data), 200
+
