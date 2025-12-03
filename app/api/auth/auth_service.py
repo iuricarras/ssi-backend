@@ -214,7 +214,7 @@ class AuthService:
         if not user_record:
             return {"success": False, "error": "invalid_or_expired_challenge", "status": 400}
 
-        public_key_pem = user_record.get("signkey")
+        public_key_pem = user_record.get("authenticationKey")
         if not public_key_pem:
             return {"success": False, "error": "invalid_or_expired_challenge", "status": 400}
 
