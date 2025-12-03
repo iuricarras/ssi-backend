@@ -17,6 +17,7 @@ from cryptography.hazmat.primitives.asymmetric import padding
 class AuthService:
     def __init__(self, mongo_client: MongoClient, db_name: str, config, mail_service: Mail):
         self.db = mongo_client[db_name]
+        self.nonces: Collection = self.db["nonces"]
         self.challenges: Collection = self.db["otp_challenges"]
         self.signature_challenges = self.db["signature_challenges"]
         self.user_data: Collection = self.db["user"]
@@ -30,6 +31,15 @@ class AuthService:
         self.challenges.create_index("challenge_id", unique=True)
         self.signature_challenges.create_index("expires_at", expireAfterSeconds=0)
         self.signature_challenges.create_index("challenge_id", unique=True)
+        self.nonces.create_index("email")
+
+    def _create_login_nonce(self, email: str) -> str:
+        nonce = secrets.token_urlsafe(32)
+        self.nonces.insert_one({
+            "email": email,
+            "nonce": nonce
+        })
+        return nonce
 
     def _otp_hash_once(self, code: str, challenge_id: str, email: str) -> str:
         msg = f"{challenge_id}:{email}:{code}".encode()
@@ -151,8 +161,9 @@ class AuthService:
             {"challenge_id": challenge_id},
             {"$set": {"consumed": True}}
         )
-
-        return {"success": True, "user_id": email}
+        self.nonces.delete_many({"email": email})
+        login_nonce = self._create_login_nonce(email)
+        return {"success": True, "user_id": email, "nonce": login_nonce}
 
     # Assinatura Digital 
     def create_signature_challenge(self, email: str) -> Optional[Dict[str, Any]]:
@@ -230,8 +241,10 @@ class AuthService:
                 hashes.SHA256()
             )
             self.signature_challenges.update_one({"challenge_id": challenge_id}, {"$set": {"consumed": True}})
-
-            return {"success": True, "user_id": email}
+            self.nonces.delete_many({"email": email})
+            
+            login_nonce = self._create_login_nonce(email)
+            return {"success": True, "user_id": email, "nonce": login_nonce}
 
         except InvalidSignature:
             return {"success": False, "error": "invalid_or_expired_challenge", "status": 400}

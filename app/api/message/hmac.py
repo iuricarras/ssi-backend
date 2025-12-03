@@ -10,16 +10,11 @@ from pymongo.collection import Collection
 class MessageAuthentication():
     def __init__(self, mongo_client: MongoClient, db_name: str):
         self.db = mongo_client[db_name]
-        self.challenges: Collection = self.db["otp_challenges"]
-        self.signature_challenges: Collection = self.db["signature_challenges"]
+        self.nonces: Collection = self.db["nonces"]
 
     def _create_hmac_secret(self, userID: str, isEC: bool) -> str:
-        if isEC:
-            user = self.signature_challenges.find_one({"email": userID}, sort=[('_id', DESCENDING)] )
-            secret = f"{userID}.{user.get('nonce')}"
-        else:
-            user = self.challenges.find_one({"email": userID}, sort=[('_id', DESCENDING)] )
-            secret = f"{userID}.{user.get('code_h')}"
+        user = self.nonces.find_one({"email": userID}, sort=[('_id', DESCENDING)] )
+        secret = f"{userID}.{user.get('nonce')}"
         h = hashlib.new('sha256')
         h.update(secret.encode('utf-8'))
         return h.hexdigest()

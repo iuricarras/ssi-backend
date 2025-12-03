@@ -49,9 +49,10 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
         if not result['success']:
             return jsonify({'error': result['error']}), result['status']
         user_id = result['user_id']
+        login_nonce = result.get("nonce")
         access = create_access_token(identity=str(user_id), additional_claims={"is_ec": False}, fresh=True)
         refresh = create_refresh_token(identity=str(user_id), additional_claims={"is_ec": False})
-        resp = jsonify({'ok': True})
+        resp = jsonify({'ok': True, 'session_nonce': login_nonce})
         set_access_cookies(resp, access)
         set_refresh_cookies(resp, refresh)
         return resp, 200
@@ -164,10 +165,11 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
             return jsonify({'error': result['error']}), result['status']
 
         user_id = result['user_id']
+        login_nonce = result.get("nonce")
         access = create_access_token(identity=str(user_id), additional_claims={"is_ec": True}, fresh=True)
         refresh = create_refresh_token(identity=str(user_id), additional_claims={"is_ec": True})
 
-        resp = jsonify({'ok': True})
+        resp = jsonify({'ok': True, 'session_nonce': login_nonce})
         set_access_cookies(resp, access)
         set_refresh_cookies(resp, refresh)
 
