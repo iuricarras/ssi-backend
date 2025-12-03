@@ -57,21 +57,6 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
         set_refresh_cookies(resp, refresh)
         return resp, 200
 
-    @bp.get('/user/profile')
-    @jwt_required()
-    def user_profile():
-        """Retorna informações básicas do utilizador (nome e email)."""
-        user_id = str(get_jwt_identity())
-        
-        # MOCK DATA: Substituir pela chamada real ao auth_service
-        user_data = {
-            'id': user_id,
-            'name': f"Utilizador {user_id}",
-            'email': f"user{user_id}@ssi.pt"
-        }
-
-        return jsonify(user_data), 200
-
     @bp.get('/auth/me')
     @jwt_required()
     @swag_from(os.path.join(docs, 'me.yml'))
@@ -79,7 +64,7 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
         claims = get_jwt()
         email = get_jwt_identity()
         is_ec = claims.get("is_ec", False)
-        
+
         message = message_authentication.generate_hmac_signature(
             message=str(get_jwt_identity()),
             userID=str(get_jwt_identity()),
@@ -93,8 +78,16 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
             isEC=is_ec
         )
         print("Verified HMAC message:", valid, decoded_message)
+
+        user_info = auth_service.get_user_by_email(email)
+        if not user_info:
+            user_info = {}
+        
+        user_info['id'] = get_jwt_identity()
+        user_info['isEC'] = is_ec
+
         """Retorna informações do usuário autenticado (principalmente ID)."""
-        return jsonify({'id': get_jwt_identity()}), 200
+        return jsonify(user_info), 200
 
     @bp.post('/auth/refresh')
     @jwt_required(refresh=True)

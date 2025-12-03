@@ -252,3 +252,15 @@ class AuthService:
         except Exception as e:
             print(f"Erro na verificação de assinatura: {e}")
             return {"success": False, "error": "internal_error", "status": 500}
+
+    def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
+        user = self.user_data.find_one({"email": email})
+        if not user:
+            return None
+
+        user_info = {
+            "username": user.get("username", user.get("email", "")),
+            "nome": user.get("nome", ""),
+            "email": user.get("email", "")
+        }
+        return user_info
