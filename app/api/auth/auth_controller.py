@@ -102,7 +102,12 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
     def refresh():
         """Gera novo access token usando refresh token."""
         uid = get_jwt_identity()
-        new_access = create_access_token(identity=uid, additional_claims={"is_ec": False}, fresh=False)
+        claims = get_jwt()
+        is_ec = claims.get("is_ec", False)
+        if is_ec:
+            new_access = create_access_token(identity=uid, additional_claims={"is_ec": True}, fresh=False)
+        else:
+            new_access = create_access_token(identity=uid, additional_claims={"is_ec": False}, fresh=False)
         resp = jsonify({'ok': True})
         set_access_cookies(resp, new_access)
         return resp, 200
