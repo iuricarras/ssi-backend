@@ -4,6 +4,7 @@ import os
 import secrets
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
+from typing import Dict, Any, List
 
 class CarteiraService:
     """
@@ -45,6 +46,7 @@ class CarteiraService:
             salt = carteira_doc.get('salt')
             data_stored = carteira_doc.get('data')
             try:
+                # Tenta decifrar. Se falhar, levanta ValueError.
                 self._get_encrypted_data(data_stored, master_key, salt)
             except Exception:
                 raise ValueError("Chave mestra incorreta.")
@@ -62,7 +64,75 @@ class CarteiraService:
             )
             return True
         except Exception as e:
+            # Capturar exceções de DB, etc.
+            print(f"Erro ao salvar carteira: {e}")
             return False
+
+    def add_certificate(self, user_id: str, certificate_data: Dict[str, Any], master_key: str) -> bool:
+        """
+        Adiciona um novo certificado à carteira do utilizador após a aprovação da notificação.
+        Requer a master_key do utilizador.
+        """
+        
+        try:
+            decrypted_carteira_data = self.get_carteira_data(user_id, master_key)
+        except ValueError:
+            raise ValueError("Chave mestra incorreta.")
+        except Exception as e:
+            raise Exception(f"Erro ao obter carteira: {e}")
+
+        
+        existing_data: List[Dict[str, Any]] = []
+        
+        # Adicionar dados pessoais existentes
+        for item in decrypted_carteira_data.get('personalData', []):
+            existing_data.append({
+                'tipo': 'personalData',
+                'chave': item.get('name'),
+                'valor': item.get('value')
+            })
+            
+        # Adicionar certificados existentes (reformata os campos de volta para a estrutura de lista aninhada esperada)
+        for cert in decrypted_carteira_data.get('certificates', []):
+            cert_nome = cert.get('nome')
+            campos_cert = []
+            
+            for key, value in cert.items():
+                if key != 'nome' and value is not None:
+                    campos_cert.append({
+                        'chave': key,
+                        'valor': value
+                    })
+            
+            existing_data.append({
+                'tipo': 'certificate',
+                'nome': cert_nome,
+                'campos': campos_cert
+            })
+        
+        cert_nome = certificate_data.get('nome')
+        
+        if not cert_nome:
+            raise ValueError("Dados de certificado inválidos (nome ausente).")
+
+        new_cert_campos = []
+        
+        for key, value in certificate_data.items():
+            if key not in ['nome', 'signature', 'entidade', 'emissao'] and value is not None:
+                new_cert_campos.append({'chave': key, 'valor': value})
+
+        if 'entidade' in certificate_data: new_cert_campos.append({'chave': 'Entidade', 'valor': certificate_data['entidade']})
+        if 'emissao' in certificate_data: new_cert_campos.append({'chave': 'Emissão', 'valor': certificate_data['emissao']})
+
+        existing_data.append({
+            'tipo': 'certificate',
+            'nome': cert_nome,
+            'campos': new_cert_campos
+        })
+
+
+        return self.update_carteira_data(user_id, existing_data, master_key)
+
 
     def get_user_by_username(self, username: str) -> dict:
         """ 
@@ -160,8 +230,16 @@ class CarteiraService:
                 if cert_nome not in new_certificates_map:
                     new_certificates_map[cert_nome] = {'nome': cert_nome}
                 
+                # Certificados vêm como lista de campos (do frontend/add_certificate)
                 for campo in item.get('campos', []):
                     new_certificates_map[cert_nome][campo['chave']] = self._encrypt_value(campo['valor'], master_key, salt)
+                
+                # Se o certificado já estiver no novo formato de mapa (após ser decifrado e re-entrar no loop)
+                if 'campos' not in item:
+                     for key, value in item.items():
+                        if key not in ['nome', 'tipo'] and value is not None:
+                            new_certificates_map[cert_nome][key] = self._encrypt_value(value, master_key, salt)
+
 
         return {
             "personalData": new_personal_data,
