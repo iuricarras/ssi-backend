@@ -1,6 +1,7 @@
 from pymongo import MongoClient
 from datetime import datetime, timedelta
 import hashlib
+import secrets
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 class VerifyService:
@@ -39,7 +40,7 @@ class VerifyService:
         if not carteira:
             return {'success': False, 'error': 'Carteira do utilizador de verificação não encontrada.', 'status': 404}
 
-        nounce = Random.get_random_bytes(16)
+        nounce = secrets.token_bytes(16)
         h = hashlib.new('sha256')
         h.update(f"{master_key}{nounce.hex()}".encode('utf-8'))
 
@@ -273,8 +274,15 @@ class VerifyService:
         cipher = Cipher(algorithm, mode)
         decryptor = cipher.decryptor()  
 
-        data_decrypted = decryptor.update(data_encrypted) + decryptor.finalize()
-        data_str = data_decrypted.decode('utf-8')
+        data_bytes = bytes.fromhex(data_encrypted)
+        data_decrypted = decryptor.update(data_bytes) + decryptor.finalize()
+        unpadder = padding.PKCS7(128).unpadder()
+        data = unpadder.update(data_decrypted) + unpadder.finalize()
+        
+        data_str = data.decode('utf-8')
+
+        # data_decrypted = decryptor.update(data_encrypted) + decryptor.finalize()
+        # data_str = data_decrypted.decode('utf-8')
         return data_str
 
     def _encrypt_data(self, data_str: str, secret: str) -> tuple:
@@ -289,12 +297,17 @@ class VerifyService:
 
         enc_cipher = Cipher(enc_algorithm, enc_mode)
         encryptor = enc_cipher.encryptor()  
-        data_reencrypted = encryptor.update(data_str.encode('utf-8')) + encryptor.finalize()
+
+        padder = padding.PKCS7(128).padder()
+        padded_data = padder.update(value.encode('utf-8')) + padder.finalize()
+        data_reencrypted = encryptor.update(padded_data) + encryptor.finalize()
+
+        # data_reencrypted = encryptor.update(data_str.encode('utf-8')) + encryptor.finalize()
         return data_reencrypted
 
     def _rencrypt_data(self, data_str: str, master_key: str) -> tuple:
         """ Re cifra os dados da carteira com a chave mestra. """
-        nounce = Random.get_random_bytes(16)
+        nounce = secrets.token_bytes(16)
         h = hashlib.new('sha256')
         h.update(f"{master_key}{nounce.hex()}".encode('utf-8'))
 
@@ -308,6 +321,11 @@ class VerifyService:
 
         enc_cipher = Cipher(enc_algorithm, enc_mode)
         encryptor = enc_cipher.encryptor()  
-        data_reencrypted = encryptor.update(data_str.encode('utf-8')) + encryptor.finalize()
+
+        padder = padding.PKCS7(128).padder()
+        padded_data = padder.update(value.encode('utf-8')) + padder.finalize()
+        data_reencrypted = encryptor.update(padded_data) + encryptor.finalize()
+
+        # data_reencrypted = encryptor.update(data_str.encode('utf-8')) + encryptor.finalize()
 
         return data_reencrypted, nounce.hex()

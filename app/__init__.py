@@ -10,12 +10,16 @@ from .api.auth.auth_service import AuthService
 from .api.register.register_service import RegService
 from .api.message.hmac import MessageAuthentication
 
-# --- NOVAS IMPORTAÇÕES PARA CARTEIRA ---
+# --- NOVAS IMPORTAÇÕES ---
+from .services.email_service import EmailService
+from .api.notification.notification_service import NotificationService
+from .api.notification import register_notification_routes
+# -------------------------
+
+# --- IMPORTAÇÕES EXISTENTES ---
 from .api.carteira.carteira_service import CarteiraService
 from .api.carteira import register_carteira_routes
-# ---------------------------------------
 from .api.user import register_user_routes
-
 from .api.verify.verify_service import VerifyService
 
 
@@ -45,10 +49,18 @@ def create_app(config_class=Config) -> Flask:
     mongo_client = MongoClient(app.config['MONGO_URI'])
     db_name = app.config['MONGO_DB_NAME']
 
-    # Email
+    # Email (Flask-Mail object)
     mail = Mail(app)
+    
+    # --- NOVO: Serviço de Email Auxiliar ---
+    email_service = EmailService(
+        mail_service=mail,
+        config=app.config
+    )
+    # -------------------------------------
 
     # Services
+    # NOTA: Mantido o uso de 'mail' para compatibilidade com o AuthService existente
     auth_service = AuthService(
         mongo_client=mongo_client,
         db_name=db_name,
@@ -62,19 +74,28 @@ def create_app(config_class=Config) -> Flask:
         config=config_class
     )
     
-    # --- INSTANCIAR CARTEIRA SERVICE ---
+    # [1] Criamos o CarteiraService primeiro
     carteira_service = CarteiraService(
         mongo_client=mongo_client,
         db_name=db_name,
         config=config_class
     )
-    # ----------------------------------
-
+    
     verify_service = VerifyService(
         mongo_client=mongo_client,
         db_name=db_name,
         config=config_class
     )
+    
+    # [2] Criamos o NotificationService, INJETANDO o CarteiraService
+    notification_service = NotificationService(
+        mongo_client=mongo_client,
+        db_name=db_name,
+        mail_service=email_service,
+        carteira_service=carteira_service, # INJEÇÃO CRÍTICA
+        config=config_class
+    )
+    # ----------------------------------------------------------------
 
     message_authentication = MessageAuthentication(
         mongo_client=mongo_client,
@@ -86,9 +107,9 @@ def create_app(config_class=Config) -> Flask:
     from .api.auth import register_auth_routes
     from .api.register import register_reg_routes
     from .api.verify import register_ver_routes
-
+    
+    # --- ROTAS EXISTENTES ---
     register_reg_routes(api_blueprint, register_service)
-
     register_auth_routes(api_blueprint, auth_service, message_authentication)
     
     # --- REGISTAR ROTAS DA CARTEIRA ---
@@ -96,8 +117,12 @@ def create_app(config_class=Config) -> Flask:
     # ----------------------------------
     
     register_user_routes(api_blueprint, mongo_client, db_name, message_authentication)
-
     register_ver_routes(api_blueprint, verify_service)
+    # ------------------------
+    
+    # --- Registar Rotas de Notificação ---
+    register_notification_routes(api_blueprint, notification_service, email_service)
+    # -------------------------------------------
 
     app.register_blueprint(api_blueprint)
 
