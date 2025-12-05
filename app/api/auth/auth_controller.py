@@ -65,19 +65,19 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
         email = get_jwt_identity()
         is_ec = claims.get("is_ec", False)
 
-        message = message_authentication.generate_hmac_signature(
-            message=str(get_jwt_identity()),
-            userID=str(get_jwt_identity()),
-            isEC=is_ec
-        )
-        print("Generated HMAC message:", message)
+        # message = message_authentication.generate_hmac_signature(
+        #     message=str(get_jwt_identity()),
+        #     userID=str(get_jwt_identity()),
+        #     isEC=is_ec
+        # )
+        # print("Generated HMAC message:", message)
 
-        valid, decoded_message = message_authentication.verify_hmac_signature(
-            encoded=message,
-            userID=str(get_jwt_identity()),
-            isEC=is_ec
-        )
-        print("Verified HMAC message:", valid, decoded_message)
+        # valid, decoded_message = message_authentication.verify_hmac_signature(
+        #     encoded=message,
+        #     userID=str(get_jwt_identity()),
+        #     isEC=is_ec
+        # )
+        # print("Verified HMAC message:", valid, decoded_message)
 
         user_info = auth_service.get_user_by_email(email)
         if not user_info:
@@ -86,8 +86,13 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
         user_info['id'] = get_jwt_identity()
         user_info['isEC'] = is_ec
 
+        hmac = message_authentication.generate_hmac_signature(
+            message=user_info,
+            userID=str(user_info['id']),
+            isEC=is_ec
+        )
         """Retorna informações do usuário autenticado (principalmente ID)."""
-        return jsonify(user_info), 200
+        return jsonify({"data": user_info, "hmac": hmac}), 200
 
     @bp.post('/auth/refresh')
     @jwt_required(refresh=True)

@@ -92,10 +92,10 @@ def create_app(config_class=Config) -> Flask:
     register_auth_routes(api_blueprint, auth_service, message_authentication)
     
     # --- REGISTAR ROTAS DA CARTEIRA ---
-    register_carteira_routes(api_blueprint, carteira_service)
+    register_carteira_routes(api_blueprint, carteira_service, message_authentication)
     # ----------------------------------
     
-    register_user_routes(api_blueprint, mongo_client, db_name)
+    register_user_routes(api_blueprint, mongo_client, db_name, message_authentication)
 
     register_ver_routes(api_blueprint, verify_service)
 

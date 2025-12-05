@@ -1,8 +1,9 @@
 import jwt
 import hashlib
+import hmac
 from pymongo import MongoClient, DESCENDING
 from pymongo.collection import Collection
-
+import json as JSON
 
 ## Utilizar esta função para gerar a assinatura HMAC de uma mensagem
 ## Utilizar no retorno de todos os endpoints
@@ -15,17 +16,16 @@ class MessageAuthentication():
     def _create_hmac_secret(self, userID: str, isEC: bool) -> str:
         user = self.nonces.find_one({"email": userID}, sort=[('_id', DESCENDING)] )
         secret = f"{userID}.{user.get('nonce')}"
+        print("HMAC Secret:", secret)
         h = hashlib.new('sha256')
         h.update(secret.encode('utf-8'))
         return h.hexdigest()
 
-    def generate_hmac_signature(self, message: str, userID: str, isEC: bool) -> str:
+    def generate_hmac_signature(self, message: dict, userID: str, isEC: bool) -> str:
         hashedSecret = self._create_hmac_secret(userID, isEC)
-        return jwt.encode({"message": message}, hashedSecret, algorithm="HS256")
+        print("Hashed Secret for HMAC:", hashedSecret)
+        h = hmac.new(hashedSecret.encode('utf-8'), JSON.dumps(message, sort_keys=True, separators=(',', ':')).encode('utf-8'), hashlib.sha256)
+        return h.hexdigest()
 
-    def verify_hmac_signature(self, encoded: str, userID: str, isEC: bool) -> str:
-        hashedSecret = self._create_hmac_secret(userID, isEC)
-        decoded = jwt.decode(encoded, hashedSecret, algorithms=["HS256"])
-        if "message" not in decoded:
-            return False, ""
-        return True, decoded["message"]
+    def verify_hmac_signature(self, message: dict, hmac_signature: str, userID: str, isEC: bool) -> str:
+        return hmac.compare_digest(hmac_signature, self.generate_hmac_signature(message, userID, isEC))

@@ -4,13 +4,15 @@ from flasgger import swag_from
 import os
 
 from .carteira_service import CarteiraService 
-
+from app.api.message import MessageAuthentication
+import json as JSON
 carteira_bp = Blueprint('carteira', __name__, url_prefix='/carteira')
 
-def init_carteira_controller(carteira_service: CarteiraService):
+def init_carteira_controller(carteira_service: CarteiraService, message_authentication: MessageAuthentication):
     global service 
     service = carteira_service
-
+    global message_authentication_service
+    message_authentication_service = message_authentication
 def get_current_user_id():
     # Usa o ID do JWT para identificar o utilizador
     try:
@@ -29,13 +31,22 @@ def get_carteira():
     if not user_id:
         return jsonify({"message": "Não autenticado."}), 401
     
-    data = request.get_json()
+    message = request.get_json()
+    data = message.get('data')
+    hmac = message.get('hmac')
+    print("Received data for HMAC verification:", data)
+    if not message_authentication_service.verify_hmac_signature(data, hmac, user_id, isEC=False):
+        return jsonify({"message": "HMAC inválido."}), 400
+    
     master_key = data.get('masterKey')
-
-
     try:
         carteira_data = service.get_carteira_data(user_id, master_key)
-        return jsonify(carteira_data), 200
+        hmac = message_authentication_service.generate_hmac_signature(
+            message=carteira_data,
+            userID=user_id,
+            isEC=False
+        )
+        return jsonify({"data": carteira_data, "hmac": hmac}), 200
     except ValueError:
         return jsonify({"message": "Erro de decifra. Chave Mestra inválida."}), 400
 
@@ -50,13 +61,26 @@ def update_carteira():
     if not user_id:
         return jsonify({"message": "Não autenticado."}), 401
         
-    data = request.get_json()
+    message = request.get_json()
+    data = message.get('data')
+    hmac = message.get('hmac')
+    
+    print("Received data for HMAC verification:", JSON.dumps(data, sort_keys=True, separators=(',', ':')))
+    if not message_authentication_service.verify_hmac_signature(data, hmac, user_id, isEC=False):
+        return jsonify({"message": "HMAC inválido."}), 400
+    
     master_key = data.get('masterKey')
-    data = data.get('data')    
+    data = data.get('data')
     
     try:
         if service.update_carteira_data(user_id, data, master_key):
-            return jsonify({"message": "Dados atualizados."}), 200
+            data = {"message": "Dados atualizados."}
+            hmac = message_authentication_service.generate_hmac_signature(
+                message=data,
+                userID=user_id,
+                isEC=False
+            )
+            return jsonify({"data": data, "hmac": hmac}), 200
         else:
             return jsonify({"message": "Erro interno ao guardar os dados."}), 500
     except ValueError:
@@ -70,10 +94,17 @@ def get_user_profile(username):
     """
     Retorna o perfil do utilizador com base no username.
     """
+    user_id = get_current_user_id()
     user = service.get_user_by_username(username)
     if not user:
         return jsonify({"message": "Utilizador não encontrado."}), 404
-    return jsonify(user), 200
+    
+    hmac = message_authentication_service.generate_hmac_signature(
+        message=user,
+        userID=user_id,
+        isEC=False
+    )   
+    return jsonify({"data": user, "hmac": hmac}), 200
 
 @carteira_bp.route('/user/<username>', methods=['GET'])
 @jwt_required()
@@ -81,6 +112,7 @@ def get_user_carteira(username):
     """
     Retorna os dados públicos (dados pessoais e certificados) da carteira de um utilizador.
     """
+    user_id = get_current_user_id()
     user = service.get_user_by_username(username)
     if not user:
         return jsonify({"message": "Utilizador não encontrado."}), 404
@@ -92,5 +124,11 @@ def get_user_carteira(username):
         "certificates": carteira_data.get("certificates", [])
     }
     
-    return jsonify(response_data), 200
 
+    hmac = message_authentication_service.generate_hmac_signature(
+        message=response_data,
+        userID=user_id,
+        isEC=False
+    )
+
+    return jsonify({"data": response_data, "hmac": hmac}), 200
