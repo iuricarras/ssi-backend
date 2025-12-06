@@ -114,7 +114,7 @@ class AuthService:
         # Enviar email com o OTP 
         ttl = self.config["OTP_TTL_SEC"] / 60
         ttl_str = str(round(ttl))
-        user = "User" # quando funcionar com a base de dados, juntar o nome
+        user = user.get("nome", "Utilizador") # nome do utilizador 
         try:
             sender_email = sender_email = self.config["MAIL_DEFAULT_SENDER"]
             html_content = self._get_email_template(code, ttl_str, user)
