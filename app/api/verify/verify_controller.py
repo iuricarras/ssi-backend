@@ -91,6 +91,6 @@ def create_verify_controller(verify_service):
         if not result['success']:
             return jsonify({'error': result['error']}), result['status']
 
-        return jsonify({'all_verifications': result['all_verifications']}), result['status']
+        return jsonify({'all_verifications': result['verifications']}), result['status']
     return bp
 

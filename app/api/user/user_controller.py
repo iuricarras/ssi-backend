@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 from .user_service import UserService
-from ...message.hmac import MessageAuthentication
+from ..message.hmac import MessageAuthentication
 
 def create_user_controller(user_service: UserService, message_authentication: MessageAuthentication):
 
