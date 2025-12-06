@@ -8,6 +8,7 @@ import json as JSON
 ## Utilizar esta função para gerar a assinatura HMAC de uma mensagem
 ## Utilizar no retorno de todos os endpoints
 
+
 class MessageAuthentication():
     def __init__(self, mongo_client: MongoClient, db_name: str):
         self.db = mongo_client[db_name]
@@ -24,7 +25,7 @@ class MessageAuthentication():
     def generate_hmac_signature(self, message: dict, userID: str, isEC: bool) -> str:
         hashedSecret = self._create_hmac_secret(userID, isEC)
         print("Hashed Secret for HMAC:", hashedSecret)
-        h = hmac.new(hashedSecret.encode('utf-8'), JSON.dumps(message, sort_keys=True, separators=(',', ':')).encode('utf-8'), hashlib.sha256)
+        h = hmac.new(hashedSecret.encode('utf-8'), JSON.dumps(message, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode('utf-8'), hashlib.sha256)
         return h.hexdigest()
 
     def verify_hmac_signature(self, message: dict, hmac_signature: str, userID: str, isEC: bool) -> str:
