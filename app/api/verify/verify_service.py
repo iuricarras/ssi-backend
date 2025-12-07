@@ -1,4 +1,3 @@
-from app.api.notification import notification_service
 from pymongo import MongoClient
 from datetime import datetime, timedelta
 import hashlib
@@ -6,12 +5,12 @@ import secrets
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 class VerifyService:
-    def __init__(self, mongo_client: MongoClient, db_name: str, config): 
+    def __init__(self, mongo_client: MongoClient, db_name: str, config, notification_service): 
         self.db = mongo_client[db_name]
         self.verifications = self.db["verifications"]
         self.wallets = self.db["carteiras"]
         self.config = config
-
+        self.notification_service = notification_service
         self._setup_indexes()
 
     def _setup_indexes(self):
@@ -78,7 +77,7 @@ class VerifyService:
             "created_at": datetime.utcnow(),
             "updated_at": datetime.utcnow()
         }
-        notification_service.notifications.insert_one(notification_doc)
+        self.notification_service.notifications.insert_one(notification_doc)
 
         return {'success': True, 'message': 'Verificação solicitada e notificação criada.', 'status': 200}
 
