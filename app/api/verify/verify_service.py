@@ -1,3 +1,4 @@
+from app.api.notification import notification_service
 from pymongo import MongoClient
 from datetime import datetime, timedelta
 import hashlib
@@ -63,7 +64,24 @@ class VerifyService:
 
         self.verifications.insert_one(verification_doc)
 
-        return {'success': True, 'message': 'Verificação solicitada com sucesso.', 'status': 200}
+        # Criar notificação para o destinatário
+        notification_doc = {
+            "notification_id": secrets.token_urlsafe(16),
+            "recipient_user_id": verification_user,  # quem vai aceitar
+            "requester_id": user_id,
+            "type": "VERIFICATION_REQUEST",
+            "status": "PENDING",
+            "payload": {
+                "verification_id": verification_doc['verification_id'],
+                "verification_data_type": verification_data_type
+            },
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        notification_service.notifications.insert_one(notification_doc)
+
+        return {'success': True, 'message': 'Verificação solicitada e notificação criada.', 'status': 200}
+
 
     def accept_verification(self, user_id: str, data: dict) -> dict:
         """
