@@ -188,7 +188,7 @@ class VerifyService:
         salt = verification.get('nounce')
 
         # Descifrar os dados de verificação com a chave mestra
-        decrypted_data_str = self._get_encrypted_data(
+        decrypted_data_str = self._verifier_decrypt_data(
             data_encrypted, master_key, salt
         )
 
