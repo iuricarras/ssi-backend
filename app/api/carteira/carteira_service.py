@@ -22,7 +22,10 @@ class CarteiraService:
 
     def get_carteira_data(self, user_id: str, master_key: str) -> dict:
         """
-        Recupera os dados da carteira do banco de dados e decifra-os usando a chave mestra.
+        Recupera os dados da carteira da base de dados e decifra-os usando a chave mestra.
+        Procura o doc da carteira pelo user_id.
+        Se não existir, retorna a estrutura inicial vazia.
+        Caso exista, decifra os dados com master_key + salt.
         """
         carteira_doc = self.carteiras_collection.find_one({'user_id': user_id})
    
@@ -37,7 +40,12 @@ class CarteiraService:
     
     def update_carteira_data(self, user_id: str, data: dict, master_key: str) -> bool:
         """
-        Cifra os valores dos dados fornecidos e atualiza a carteira no banco de dados.
+        Cifra os valores dos dados fornecidos e atualiza a carteira na base de dados.
+        Valida master_key ao tentar decifrar dados existentes.
+        Gera novo salt.
+        Cifra dados fornecidos com AES-CBC.
+        Atualiza ou insere o documento na coleção.
+        Retorna True se sucesso, False se erro.
         """
         # Verificar se a chave mestra é válida para os dados existentes
         # É valida se conseguir decifrar os dados atuais com a chave fornecida 
@@ -72,6 +80,10 @@ class CarteiraService:
         """
         Adiciona um novo certificado à carteira do utilizador após a aprovação da notificação.
         Requer a master_key do utilizador.
+        Decifra dados existentes com master_key.
+        Reformata dados pessoais e certificados existentes.
+        Constrói novo certificado com campos (entidade, emissão).
+        Atualiza a carteira com dados + novo certificado.
         """
         
         try:
@@ -200,6 +212,9 @@ class CarteiraService:
     def _get_encrypted_data(self, data: dict, master_key: str, salt: str) -> dict:
         """
         Percorre a estrutura de dados armazenada e decifra cada valor individualmente.
+        Percorre personalData e certificates.
+        Decifra cada valor com AES-CBC.
+        Retorna a estrutura legível.
         """
         return {"personalData": [{
                     'name': item.get('name'),
@@ -250,6 +265,9 @@ class CarteiraService:
     def _decrypt_value(self, data_encrypted: str, master_key: str, salt: str) -> str:
         """ 
         Decifra um valor individual. 
+        Deriva chave e IV com SHA256(masterKey.salt).
+        Usa AES-CBC + PKCS7 unpadding.
+        Retorna a string decifrada.
         """
         try:
             secret = f"{master_key}.{salt}"
@@ -280,6 +298,9 @@ class CarteiraService:
     def _encrypt_value(self, value: str, master_key: str, salt: str) -> str:
         """ 
         Cifra um valor individual usando AES-CBC e retorna em formato hexadecimal. 
+        Deriva chave e IV com SHA256(masterKey.salt).
+        Usa AES-CBC + PKCS7 padding.
+        Retorna o valor cifrado em hexadecimal.
         """
         h = hashlib.new('sha256')
         h.update(f"{master_key}.{salt}".encode('utf-8'))

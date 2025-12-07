@@ -15,6 +15,13 @@ class MessageAuthentication():
         self.nonces: Collection = self.db["nonces"]
 
     def _create_hmac_secret(self, userID: str, isEC: bool) -> str:
+        """
+        Cria um segredo HMAC derivado do nonce do utilizador.
+        Procura o último nonce associado ao email (userID).
+        Concatena userID + nonce -> "userID.nonce".
+        Aplica SHA256 para derivar segredo fixo.
+        Retorna digest hexadecimal.
+        """
         user = self.nonces.find_one({"email": userID}, sort=[('_id', DESCENDING)] )
         secret = f"{userID}.{user.get('nonce')}"
         print("HMAC Secret:", secret)
@@ -23,6 +30,12 @@ class MessageAuthentication():
         return h.hexdigest()
 
     def generate_hmac_signature(self, message: dict, userID: str, isEC: bool) -> str:
+        """
+        Gera uma assinatura HMAC para uma mensagem.
+        Obtém o segredo derivado via _create_hmac_secret().
+        Aplica HMAC-SHA256 sobre a mensagem com segredo.
+        Retorna a assinatura em hexadecimal.
+        """
         hashedSecret = self._create_hmac_secret(userID, isEC)
         print("Hashed Secret for HMAC:", hashedSecret)
         print(JSON.dumps(message, sort_keys=True, separators=(',', ':'), ensure_ascii=False))
@@ -30,4 +43,7 @@ class MessageAuthentication():
         return h.hexdigest()
 
     def verify_hmac_signature(self, message: dict, hmac_signature: str, userID: str, isEC: bool) -> str:
+        """
+        Verifica a assinatura HMAC recebida.
+        """
         return hmac.compare_digest(hmac_signature, self.generate_hmac_signature(message, userID, isEC))

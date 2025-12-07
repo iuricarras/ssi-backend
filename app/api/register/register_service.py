@@ -23,6 +23,14 @@ class RegService:
     def register_ec(self, user_data: Dict[str, str]) -> Dict[str, Any]:
         """
         Registo de uma Nova Entidade Certificadora (EC).
+        Fluxo:
+        1. Valida a unicidade de authenticationKey, NIF, email e telefone.
+        2. Constrói o documento com dados da EC:
+           - nome, tipo, tipoOutro, NIF, email, telefone
+           - authenticationKey (chave pública) e certificate (chave de assinatura)
+           - created_at (timestamp)
+        3. Insere o documento na coleção 'user'.
+        4. Retorna sucesso ou erro.
         """
         authentication_key = user_data.get('authenticationKey')
         if self.user_data.find_one({"authenticationKey": authentication_key}):
@@ -67,6 +75,17 @@ class RegService:
             return {"success": False, "error": "Erro interno ao registar.", "status": 500}
 
     def register_user(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Registo de um novo utilizador normal.
+        Fluxo:
+        1. Valida campos obrigatórios: username, email, nome.
+        2. Verifica a unicidade de username e email.
+        3. Constrói o documento com dados do utilizador:
+           - username, email, nome
+           - created_at (timestamp)
+        4. Insere o documento na coleção 'user'.
+        5. Retorna sucesso ou erro.
+        """
         username = data.get("username")
         email = data.get("email")
         nome = data.get("nome")

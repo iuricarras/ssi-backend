@@ -160,7 +160,19 @@ class AuthService:
             self.challenges.delete_many({"challenge_id": challenge_id})
             return None
 
+
     def verify_otp(self, email: str, challenge_id: str, code: str) -> Dict[str, Any]:
+        """
+        Verifica o código OTP submetido.
+        Valida o challenge ativo e não consumido.
+        Compara o hash esperado com o calculado.
+        Se for válido:
+          - Marca o challenge como consumido.
+          - Remove os nonces antigos.
+          - Cria novo login_nonce.
+          - Retorna {success, user_id, nonce}.
+        Caso contrário, retorna erro.
+        """
         now = datetime.utcnow()
 
         challenge = self.challenges.find_one({
@@ -193,6 +205,12 @@ class AuthService:
 
     # Assinatura Digital 
     def create_signature_challenge(self, email: str) -> Optional[Dict[str, Any]]:
+        """
+        Cria um desafio de assinatura digital.
+        Remove desafios anteriores.
+        Gera nonce aleatório em base64.
+        Retorna {challenge_id, nonce}.
+        """
         self.signature_challenges.delete_many({"email": email})
         
         nonce_bytes = secrets.token_bytes(32) 
@@ -224,6 +242,16 @@ class AuthService:
     def verify_signature(self, email: str, challenge_id: str, signature_base64: str) -> Dict[str, Any]:
         """
         Verifica a assinatura do nonce usando a chave pública do usuário.
+        Recupera o challenge ativo e não consumido.
+        Obtém a chave pública do utilizador.
+        Descodifica o nonce e assinatura.
+        Usa RSA PKCS1v15 + SHA256 para verificar.
+        Se for válido:
+          - Marca o challenge como consumido.
+          - Remove nonces antigos.
+          - Cria novo login_nonce.
+          - Retorna {success, user_id, nonce}.
+        Se for inválido ou erro, retorna erro.
         """
         now = datetime.utcnow()
 
@@ -280,6 +308,9 @@ class AuthService:
             return {"success": False, "error": "internal_error", "status": 500}
 
     def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
+        """
+        Obtém dados do utilizador por email.
+        """
         user = self.user_data.find_one({"email": email})
         if not user:
             return None

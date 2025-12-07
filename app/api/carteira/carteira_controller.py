@@ -14,6 +14,9 @@ def init_carteira_controller(carteira_service: CarteiraService, message_authenti
     global message_authentication_service
     message_authentication_service = message_authentication
 def get_current_user_id():
+    """
+    Obtém o ID do utilizador autenticado a partir do JWT.
+    """
     # Usa o ID do JWT para identificar o utilizador
     try:
         return get_jwt_identity() 
@@ -26,6 +29,10 @@ def get_carteira():
     """
     Obtém os dados da carteira.
     Requer 'masterKey' no corpo da requisição.
+    Valida integridade do payload com HMAC.
+    Se for válido, chama service.get_carteira_data(user_id, masterKey).
+    Retorna dados da carteira + assinatura HMAC.
+    Se a masterKey for inválida, retorna erro 400.
     """
     user_id = get_current_user_id()
     if not user_id:
@@ -56,6 +63,10 @@ def update_carteira():
     """
     Atualiza os dados da carteira.
     Requer 'masterKey' e 'data' no corpo da requisição.
+    Valida a integridade do payload com HMAC.
+    Se for válido, chama service.update_carteira_data(user_id, data, masterKey).
+    Retorna uma mensagem de sucesso + assinatura HMAC.
+    Se a masterKey for inválida, retorna erro 400.
     """
     user_id = get_current_user_id()
     if not user_id:
@@ -93,6 +104,8 @@ def update_carteira():
 def get_user_profile(username):
     """
     Retorna o perfil do utilizador com base no username.
+    Obtém dados básicos (nome, email, username).
+    Gera assinatura HMAC para garantir integridade.
     """
     user_id = get_current_user_id()
     user = service.get_user_by_username(username)
@@ -111,6 +124,9 @@ def get_user_profile(username):
 def get_user_carteira(username):
     """
     Retorna os dados públicos (dados pessoais e certificados) da carteira de um utilizador.
+    Inclui dados pessoais e certificados.
+    Obtém dados via service.get_carteira_public_data(email).
+    Gera assinatura HMAC para garantir integridade.
     """
     user_id = get_current_user_id()
     user = service.get_user_by_username(username)
