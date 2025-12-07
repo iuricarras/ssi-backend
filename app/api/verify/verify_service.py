@@ -128,7 +128,7 @@ class VerifyService:
         # Cifrar os dados de verificação com a chave secreta do verificador
         enc_secret = verification.get('enc_secret')
 
-        enc_verification_data = self._encrypt_data(str(verification_data), enc_secret)
+        enc_verification_data = self._verifier_encrypt_data(str(verification_data), enc_secret)
 
         # Atualizar o documento de verificação como aceite
         self.verifications.update_one({
@@ -143,7 +143,8 @@ class VerifyService:
         )
 
         # Cifar novamente os dados da carteira do utilizador para segurança
-        data_reencrypted, nounce = self._rencrypt_data(decrypted_data_str, master_key)
+        nounce = secrets.token_bytes(16)
+        data_reencrypted, nounce = self._encrypt_data(decrypted_data_str, master_key, nounce.hex())
         self.wallets.update_one(
             {'user_id': user_id},
             {'$set': {
@@ -276,7 +277,8 @@ class VerifyService:
 
         return verification_data
 
-    def _get_encrypted_data(self, data_encrypted: bytes, master_key: str, salt: str) -> str:
+
+    def _verifier_get_encrypted_data(self, data_encrypted: bytes, master_key: str, salt: str) -> str:
         """ Descifra os dados da carteira com a chave mestra. """
         secret = f"{master_key}.{salt}"
         h = hashlib.new('sha256')
@@ -303,7 +305,7 @@ class VerifyService:
         # data_str = data_decrypted.decode('utf-8')
         return data_str
 
-    def _encrypt_data(self, data_str: str, secret: str) -> tuple:
+    def _verifier_encrypt_data(self, data_str: str, secret: str) -> tuple:
         """ Cifra os dados da carteira com a chave mestra. """
         enc_secret = secret.encode('utf-8')
 
@@ -347,3 +349,107 @@ class VerifyService:
         # data_reencrypted = encryptor.update(data_str.encode('utf-8')) + encryptor.finalize()
 
         return data_reencrypted, nounce.hex()
+
+    def _get_encrypted_data(self, data: dict, master_key: str, salt: str) -> dict:
+        """
+        Percorre a estrutura de dados armazenada e decifra cada valor individualmente.
+        """
+        return {"personalData": [{
+                    'name': item.get('name'),
+                    'value': self._decrypt_value(item.get('value'), master_key, salt)
+                } for item in data.get('personalData', [])
+            ],"certificates": [{
+                    k: (self._decrypt_value(v, master_key, salt) if k != 'nome' else v)
+                    for k, v in cert.items()
+                }for cert in data.get('certificates', [])
+            ]
+        }
+
+    def _encrypt_data(self, data: list, master_key: str, salt: str) -> dict:
+        """
+        Processa a lista de dados recebida, cifrando cada valor individualmente.
+        """
+        new_personal_data = []
+        new_certificates_map = {} 
+
+        for item in data:
+            if item.get('tipo') == 'personalData':
+                new_personal_data.append({
+                    'name': item.get('chave', ''),
+                    'value': self._encrypt_value(item.get('valor', ''), master_key, salt)
+                })
+            elif item.get('tipo') == 'certificate':
+                cert_nome = item.get('nome')
+                if cert_nome not in new_certificates_map:
+                    new_certificates_map[cert_nome] = {'nome': cert_nome}
+                
+                # Certificados vêm como lista de campos (do frontend/add_certificate)
+                for campo in item.get('campos', []):
+                    new_certificates_map[cert_nome][campo['chave']] = self._encrypt_value(campo['valor'], master_key, salt)
+                
+                # Se o certificado já estiver no novo formato de mapa (após ser decifrado e re-entrar no loop)
+                if 'campos' not in item:
+                     for key, value in item.items():
+                        if key not in ['nome', 'tipo'] and value is not None:
+                            new_certificates_map[cert_nome][key] = self._encrypt_value(value, master_key, salt)
+
+
+        return {
+            "personalData": new_personal_data,
+            "certificates": list(new_certificates_map.values())
+        }
+
+
+    def _decrypt_value(self, data_encrypted: str, master_key: str, salt: str) -> str:
+        """ 
+        Decifra um valor individual. 
+        """
+        try:
+            secret = f"{master_key}.{salt}"
+            h = hashlib.new('sha256')
+            h.update(secret.encode('utf-8'))
+            secret = h.digest()
+
+            key = secret[:16]
+            iv = secret[16:]
+
+            algorithm = algorithms.AES(key)
+            mode = modes.CBC(iv)
+
+            cipher = Cipher(algorithm, mode)
+            decryptor = cipher.decryptor()  
+
+            data_bytes = bytes.fromhex(data_encrypted)
+            data_decrypted = decryptor.update(data_bytes) + decryptor.finalize()
+            
+            unpadder = padding.PKCS7(128).unpadder()
+            data = unpadder.update(data_decrypted) + unpadder.finalize()
+            
+            data_str = data.decode('utf-8')
+            return data_str
+        except Exception:
+            raise ValueError("Falha na decifra")
+
+    def _encrypt_value(self, value: str, master_key: str, salt: str) -> str:
+        """ 
+        Cifra um valor individual usando AES-CBC e retorna em formato hexadecimal. 
+        """
+        h = hashlib.new('sha256')
+        h.update(f"{master_key}.{salt}".encode('utf-8'))
+
+        enc_secret = h.digest()
+
+        enc_key = enc_secret[:16]
+        enc_iv = enc_secret[16:]
+
+        enc_algorithm = algorithms.AES(enc_key)
+        enc_mode = modes.CBC(enc_iv)
+
+        enc_cipher = Cipher(enc_algorithm, enc_mode)
+        encryptor = enc_cipher.encryptor()  
+        
+        padder = padding.PKCS7(128).padder()
+        padded_data = padder.update(value.encode('utf-8')) + padder.finalize()
+        
+        data_reencrypted = encryptor.update(padded_data) + encryptor.finalize()
+        return data_reencrypted.hex()
