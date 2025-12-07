@@ -2,7 +2,7 @@ from flask import Flask
 from flask_jwt_extended import JWTManager
 from pymongo import MongoClient
 from flasgger import Swagger
-from flask_mail import Mail
+from flask_mail import Mail # <--- CORRIGIDO: Adicionado Mail à importação
 from flask_cors import CORS
 
 from .config import Config
@@ -81,18 +81,20 @@ def create_app(config_class=Config) -> Flask:
         config=config_class
     )
     
+    # [1.5] Criamos o VerifyService (agora sem a lógica de request)
     verify_service = VerifyService(
         mongo_client=mongo_client,
         db_name=db_name,
         config=config_class
     )
     
-    # [2] Criamos o NotificationService, INJETANDO o CarteiraService
+    # [2] Criamos o NotificationService, INJETANDO o CarteiraService e VerifyService
     notification_service = NotificationService(
         mongo_client=mongo_client,
         db_name=db_name,
         mail_service=email_service,
-        carteira_service=carteira_service, # INJEÇÃO CRÍTICA
+        carteira_service=carteira_service,
+        verify_service=verify_service, # NOVO: Injeção do VerifyService
         config=config_class
     )
     # ----------------------------------------------------------------

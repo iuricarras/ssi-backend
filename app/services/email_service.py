@@ -50,10 +50,15 @@ class EmailService:
     def create_new_request_html(self, user_name: str, requester_name: str, request_type: str) -> str:
         """
         Cria o conteúdo HTML para notificação de nova requisição.
+<<<<<<< Updated upstream
         Lê o template e substitui os placeholders.
+=======
+        O request_type já inclui a informação se é certificado ou verificação.
+>>>>>>> Stashed changes
         """
         html = self._load_template()
 
+<<<<<<< Updated upstream
         if not html:
             return ""
 
@@ -63,3 +68,19 @@ class EmailService:
             .replace("{requester_name}", requester_name)
             .replace("{request_type}", request_type)
         )
+=======
+                    <p>Por favor, aceda à sua **área de notificações** na plataforma BitsOfMe para rever e responder a esta requisição.</p>
+                    
+                    <p>Mantenha o controlo sobre os seus dados!</p>
+                    
+                    <p>Atenciosamente,<br>A sua Equipa BitsOfMe</p>
+                </div>
+                <div class="footer">
+                    <p>Esta é uma mensagem automÃ¡tica. Por favor, nÃ£o responda a este e-mail.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        return html_template.replace('{user_name}', user_name).replace('{requester_name}', requester_name).replace('{request_type}', request_type)
+>>>>>>> Stashed changes

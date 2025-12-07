@@ -17,6 +17,7 @@ def create_verify_controller(verify_service, message_authentication: MessageAuth
         except Exception:
             return None 
 
+<<<<<<< Updated upstream
     @bp.post('/verify/request-verification') 
     @jwt_required()
     def request_verification():
@@ -43,24 +44,21 @@ def create_verify_controller(verify_service, message_authentication: MessageAuth
         )
 
         return jsonify({'data': data, 'hmac': hmac}), 200
+=======
+    # @bp.post('/verify/request-verification') # REMOVIDO: A lógica foi movida para o NotificationService
+    # @jwt_required()
+    # def request_verification():
+    #     """Solicita uma nova verificação."""
+    #     return jsonify({'error': 'Endpoint movido. Use o fluxo de notificações.'}), 400
+>>>>>>> Stashed changes
 
 
-    @bp.post('/verify/accept-verification')
-    @jwt_required()
-    def accept_verification():
-        """Aceita uma verificação solicitada."""
-        data = request.get_json(silent=True)
-        user_id = get_current_user_id()
+    # @bp.post('/verify/accept-verification') # REMOVIDO: A lógica foi movida para o NotificationService
+    # @jwt_required()
+    # def accept_verification():
+    #     """Aceita uma verificação solicitada."""
+    #     return jsonify({'error': 'Endpoint movido. Use o fluxo de notificações.'}), 400
 
-        if not data:
-            return jsonify({'error': 'Os dados devem ser JSON.'}), 400
-
-        result = verify_service.accept_verification(user_id, data)
-
-        if not result['success']:
-            return jsonify({'error': result['error']}), result['status']
-
-        return jsonify({'message': result['message']}), result['status']   
 
     @bp.put('/verify/get-verifications/<id>')
     @jwt_required()
@@ -74,13 +72,13 @@ def create_verify_controller(verify_service, message_authentication: MessageAuth
         if not result['success']:
             return jsonify({'error': result['error']}), result['status']
 
-        return jsonify({'verification': result['verification']}), result['status']
+        return jsonify({'verification': result['verifications']}), result['status']
     
 
     @bp.get('/verify/get-pending')
     @jwt_required()
     def get_pending_verifications():
-        """Obtém as verificações pendentes do verificador."""
+        """Obtém as verificações pendentes do verificador (EC/Requerente)."""
         user_id = get_current_user_id()
 
         result = verify_service.get_pending_verifications(user_id)
@@ -104,4 +102,3 @@ def create_verify_controller(verify_service, message_authentication: MessageAuth
 
         return jsonify({'all_verifications': result['verifications']}), result['status']
     return bp
-

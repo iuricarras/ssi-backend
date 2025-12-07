@@ -5,7 +5,11 @@ from app.api.message import MessageAuthentication
 
 from app.services.email_service import EmailService 
 
+<<<<<<< Updated upstream
 def create_notification_controller(notification_service, message_authentication):
+=======
+def create_notification_controller(notification_service, mail_service): # mail_service é injetado, mas só o notification_service usa
+>>>>>>> Stashed changes
     """
     Factory que cria e retorna o controller de Notificações.
     """
@@ -67,6 +71,45 @@ def create_notification_controller(notification_service, message_authentication)
 
         return jsonify({'data': data, 'hmac': hmac}), 200
 
+    
+    @bp.post('/request-verification') 
+    @jwt_required()
+    def request_verification():
+        """
+        Endpoint da Entidade Certificadora (EC) para pedido de verificação de dados.
+        Requer token JWT da EC.
+        """
+        requester_id = get_current_user_id()
+        data = request.get_json(silent=True)
+        
+        claims = get_jwt()
+        is_ec = claims.get('is_ec', False)
+
+        if not data:
+            return jsonify({'error': 'Os dados devem ser JSON.'}), 400
+            
+        if not is_ec:
+             return jsonify({'error': 'Apenas Entidades Credenciadoras podem solicitar verificação de dados.'}), 403
+
+        recipient_email = data.get('recipient_email')
+        verification_data_type = data.get('verification_data_type')
+        master_key = data.get('master_key') # Masterkey do EC para cifrar o segredo
+
+        if not recipient_email or not verification_data_type or not master_key:
+            return jsonify({'error': 'O email do destinatário, o tipo de dado e a chave mestra são obrigatórios.'}), 400
+
+        result = notification_service.request_verification_data(
+            requester_id, 
+            recipient_email, 
+            master_key, 
+            verification_data_type
+        )
+
+        if not result['success']:
+            return jsonify({'error': result['error']}), result['status']
+
+        return jsonify({'message': result['message'], 'notification_id': result.get('notification_id')}), result['status']
+
 
     @bp.get('/pending')
     @jwt_required()
@@ -93,7 +136,7 @@ def create_notification_controller(notification_service, message_authentication)
     def respond_to_notification():
         """
         O utilizador aceita ou recusa uma notificação pendente.
-        Requer 'notification_id', 'action' (ACCEPT/REJECT) e 'master_key' (se for ACCEPT de certificado).
+        Requer 'notification_id', 'action' (ACCEPT/REJECT) e 'master_key' (se for ACCEPT).
         """
         user_id = get_current_user_id()
         if not user_id:
