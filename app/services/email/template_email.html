@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style> 
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; 
+            background-color: #f8f9fa; 
+            line-height: 1.6; 
+        }
+    
+        .container { 
+            background-color: #ffffff; 
+            max-width: 500px; 
+            width: 100%;
+            margin: 0px auto; 
+            border-radius: 12px; 
+            border: 1px solid #e0e0e0; 
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); 
+        }
+        
+        .header { 
+            text-align: center;
+            background-color: #295CEA; 
+            color: white; 
+            padding: 1px; 
+            border-radius: 12px 12px 0 0; 
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .content { 
+            padding: 20px; 
+            color: #333; 
+            margin: 0 auto 20px; 
+            font-size: 16px; 
+            text-align: left;
+        }
+
+        .alert-box {
+            background-color: #ffe0b2;
+            color: #e65100;
+            padding: 12px 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            margin: 20px 0;
+            border: 1px solid #ffcc80;
+        }
+
+        .footer { 
+            font-size: 13px; 
+            color: #888; 
+            text-align: center; 
+            padding: 10px 20px; 
+            border-top: 1px solid #e0e0e0; 
+            margin-top: 20px; 
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>BitsOfMe</h2>
+        </div>
+        
+        <div class="content">
+            <p>{user_name},</p>
+
+            <p>Você recebeu uma nova requisição referente à sua carteira digital.</p>
+
+            <p><strong>{requester_name}</strong> solicitou acesso ao seguinte tipo de informação:</p>
+            <p><strong>{request_type}</strong></p>
+
+            <div class="alert-box">
+                Ação necessária: verifique esta requisição na sua área de notificações.
+            </div>
+
+            <p>Acesse a plataforma BitsOfMe para aprovar ou rejeitar este pedido.</p>
+
+            <p>Atenciosamente,<br>A equipa BitsOfMe</p>
+        </div>
+
+        <div class="footer">
+            <p>Esta é uma mensagem automática. Por favor, não responda a este e-mail.</p>
+        </div>
+    </div>
+</body>
+</html>
