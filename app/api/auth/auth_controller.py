@@ -23,7 +23,12 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
     @bp.post('/auth/start')
     @swag_from(os.path.join(docs, 'start.yml'))
     def auth_start():
-        """Inicia o processo de autenticação OTP"""
+        """
+        Inicia o processo de autenticação OTP
+        Recebe o email do utilizador.
+        Cria um challenge OTP associado ao email e IP.
+        Retorna challenge_id se criado com sucesso.
+        """
         data = request.get_json(silent=True) or {}
         email = (data.get('email') or '').strip().lower()
         if not email:
@@ -40,7 +45,12 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
     @bp.post('/auth/verify')
     @swag_from(os.path.join(docs, 'verify.yml'))
     def auth_verify():
-        """Verifica o OTP e autentica o usuário"""
+        """
+        Verifica o OTP e autentica o usuário
+        Recebe email, challenge_id e código OTP.
+        Se for válido, gera access token e refresh token JWT.
+        Define cookies JWT e retorna o nonce da sessão.
+        """
         data = request.get_json(silent=True) or {}
         email = (data.get('email') or '').strip().lower()
         challenge_id = data.get('challenge_id') or ''
@@ -61,6 +71,9 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
     @jwt_required()
     @swag_from(os.path.join(docs, 'me.yml'))
     def me():
+        """
+        Retorna informações do utilizador autenticado.
+        """
         claims = get_jwt()
         email = get_jwt_identity()
         is_ec = claims.get("is_ec", False)
@@ -132,7 +145,12 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
     @bp.post('/auth/signature/start')
     @swag_from(os.path.join(docs, 'signature_start.yml'))
     def auth_signature_start():
-        """Inicia o processo de autenticação por Assinatura Digital."""
+        """
+        Inicia o processo de autenticação por Assinatura Digital.
+        Recebe email da entidade credenciadora.
+        Cria challenge com nonce.
+        Retorna challenge_id e nonce.
+        """
         data = request.get_json(silent=True) or {}
         email = (data.get('email') or '').strip().lower()
 
@@ -153,7 +171,12 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
     @bp.post('/auth/signature/verify')
     @swag_from(os.path.join(docs, 'signature_verify.yml'))
     def auth_signature_verify():
-        """Verifica assinatura digital e autentica a entidade credenciadora."""
+        """
+        Verifica assinatura digital e autentica a entidade credenciadora.
+        Recebe email, challenge_id e assinatura.
+        Se for válido, gera tokens JWT com flag is_ec=True.
+        Define cookies JWT e retorna o nonce da sessão.
+        """
         data = request.get_json(silent=True) or {}
         email = (data.get('email') or '').strip().lower()
         challenge_id = data.get('challenge_id') or ''
