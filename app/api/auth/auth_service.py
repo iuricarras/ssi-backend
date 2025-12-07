@@ -34,6 +34,11 @@ class AuthService:
         self.nonces.create_index("email")
 
     def _create_login_nonce(self, email: str) -> str:
+        """
+        Gera nonce de login único.
+        Cria token aleatório.
+        Associa ao email na coleção nonces e retorna o nonce.
+        """
         nonce = secrets.token_urlsafe(32)
         self.nonces.insert_one({
             "email": email,
@@ -42,6 +47,11 @@ class AuthService:
         return nonce
 
     def _otp_hash_once(self, code: str, challenge_id: str, email: str) -> str:
+        """
+        Aplica HMAC SHA256 uma vez sobre (challenge_id:email:code).
+        Usa chave secreta OTP_SECRET_KEY.
+        Retorna digest hexadecimal.
+        """
         msg = f"{challenge_id}:{email}:{code}".encode()
         return hmac.new(
             self.config["OTP_SECRET_KEY"].encode(),
@@ -66,9 +76,17 @@ class AuthService:
         return hmac.compare_digest(a, b)
 
     def _generate_otp_code(self) -> str:
+        """
+        Gera código OTP de 6 dígitos aleatório.
+        """
         return str(secrets.randbelow(900000) + 100000)
 
     def _get_email_template(self, otp_code: str, ttl: str, user: str) -> str:
+        """
+        Carrega o template HTML de email.
+        Substitui placeholders {otp_code}, {time}, {nome}.
+        Retorna HTML pronto para envio.
+        """
         current_dir = Path(os.path.dirname(os.path.abspath(__file__)))
         file_path = current_dir / 'email/template_email.html'
         try:
@@ -84,6 +102,14 @@ class AuthService:
         return template_html
 
     def create_otp_challenge(self, email: str, ip: str) -> Optional[Dict[str, Any]]:
+        """
+        Cria um desafio OTP para utilizador.
+        Verifica se o utilizador existe.
+        Remove desafios anteriores.
+        Gera código OTP e challenge_id.
+        Envia email com OTP ao utilizador.
+        Retorna o challenge_id.
+        """
         user = self.user_data.find_one({"email": email})
         if not user:
             return None
