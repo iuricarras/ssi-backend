@@ -146,7 +146,6 @@ class NotificationService:
             return {"success": True, "message": "Requisição recusada com sucesso.", "status": 200}
 
         elif action == "ACCEPT":
-
             if notification['type'] == "CERTIFICATE_ADDITION":
                 if not master_key:
                     return {"success": False, "error": "A chave mestra é obrigatória para aceitar a adição de certificados.", "status": 400}
@@ -173,9 +172,9 @@ class NotificationService:
                     return {"success": False, "error": "Serviço de verificação não disponível.", "status": 500}
 
                 verification_id = notification["payload"]["verification_id"]
-
+                print(f"Accepting verification request {verification_id} for user {user_id}")
                 # Atualiza o pedido como aceite
-                result = verify_service.accept_verification(user_id=user_id, data={"verificationId": verification_id})
+                result = verify_service.accept_verification(user_id=user_id, data={"verificationId": verification_id, "masterKey": master_key})
                 if not result.get("success"):
                     return {"success": False, "error": result.get("error"), "status": result.get("status", 400)}
 

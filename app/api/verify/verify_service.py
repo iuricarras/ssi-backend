@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import hashlib
 import secrets
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives import padding
 
 class VerifyService:
     def __init__(self, mongo_client: MongoClient, db_name: str, config, notification_service): 
@@ -32,6 +33,7 @@ class VerifyService:
             return {'success': False, 'error': 'Utilizador de verificação é obrigatório.', 'status': 400}
 
         verification_data_type = data.get('verificationDataType')
+
         if not verification_data_type:
             return {'success': False, 'error': 'Tipos de dados para verificação são obrigatórios.', 'status': 400}
 
@@ -40,11 +42,11 @@ class VerifyService:
         if not carteira:
             return {'success': False, 'error': 'Carteira do utilizador de verificação não encontrada.', 'status': 404}
 
-        nounce = secrets.token_bytes(16)
+        nounce = secrets.token_hex(16)
         h = hashlib.new('sha256')
-        h.update(f"{master_key}{nounce.hex()}".encode('utf-8'))
+        h.update(f"{master_key}{nounce}".encode('utf-8'))
 
-        enc_secret = h.hexdigest()
+        enc_secret = h.digest()
         
         expires_at = datetime.utcnow() + timedelta(hours=24)
 
@@ -55,7 +57,7 @@ class VerifyService:
             'verification_user_id': verification_user,
             'verification_data_type': verification_data_type,
             'enc_secret': enc_secret,
-            'nounce': nounce.hex(),
+            'nounce': nounce,
             'accepted': False,
             'created_at': datetime.utcnow(),
             'expires_at': expires_at
@@ -112,13 +114,15 @@ class VerifyService:
 
         # Descifrar os dados da carteira do utilizador a verificar
         salt = wallet.get('salt')
+        print(wallet.get('data'))
+        print(salt)
         decrypted_data_str = self._get_encrypted_data(
-            wallet.get('data_encrypted'), master_key, salt
+            wallet.get('data'), master_key, salt
         )
-        
+        print(decrypted_data_str)
         # Extrair os dados específicos para verificação
         verification_data_type = verification.get('verification_data_type')
-
+        print(verification_data_type)
         verification_data = self._get_verification_data(decrypted_data_str, verification_data_type)
 
         if not verification_data:
@@ -142,15 +146,13 @@ class VerifyService:
         )
 
         # Cifar novamente os dados da carteira do utilizador para segurança
-        nounce = secrets.token_bytes(16)
-        data_reencrypted, nounce = self._encrypt_data(decrypted_data_str, master_key, nounce.hex())
+        nounce = secrets.token_hex(16)
+        data_reencrypted = self._encrypt_data(decrypted_data_str, master_key, nounce)
         self.wallets.update_one(
-            {'user_id': user_id},
-            {'$set': {
-                'data_encrypted': data_reencrypted,
-                'salt': nounce
-            }}
-        )
+                {'user_id': user_id},
+                {'$set': {'data': data_reencrypted, 'salt': nounce}},
+                upsert=True
+            )
 
 
         ##ENVIAR EMAIL 
@@ -262,16 +264,16 @@ class VerifyService:
 
         personalData = data.get('personalData', {})
         credentials = data.get('credentials', {})
-
-        verification_data = {}
+        print(personalData)
+        verification_data = {}  
 
         for item in personalData:
-            if item['name'] == verification_data_type:
-                verification_data.add(item)
+            if item['name'] == verification_data_type["chave"]:
+                verification_data[item['name']] = item['value']
                 return verification_data
         for item in credentials:
-            if item['nome'] == verification_data_type:
-                verification_data.add(item)
+            if item['nome'] == verification_data_type["chave"]:
+                verification_data[item['nome']] = item['valor']
                 return verification_data
 
         return verification_data
@@ -306,10 +308,10 @@ class VerifyService:
 
     def _verifier_encrypt_data(self, data_str: str, secret: str) -> tuple:
         """ Cifra os dados da carteira com a chave mestra. """
-        enc_secret = secret.encode('utf-8')
-
-        enc_key = enc_secret[:16]
-        enc_iv = enc_secret[16:]
+        print(f"Encrypting data with secret: {secret}")
+        enc_key = secret[:16]
+        enc_iv = secret[16:]
+        print(f"enc_key: {enc_key}, enc_iv: {enc_iv}")
 
         enc_algorithm = algorithms.AES(enc_key)
         enc_mode = modes.CBC(enc_iv)
@@ -318,7 +320,7 @@ class VerifyService:
         encryptor = enc_cipher.encryptor()  
 
         padder = padding.PKCS7(128).padder()
-        padded_data = padder.update(value.encode('utf-8')) + padder.finalize()
+        padded_data = padder.update(data_str.encode('utf-8')) + padder.finalize()
         data_reencrypted = encryptor.update(padded_data) + encryptor.finalize()
 
         # data_reencrypted = encryptor.update(data_str.encode('utf-8')) + encryptor.finalize()
@@ -326,9 +328,9 @@ class VerifyService:
 
     def _rencrypt_data(self, data_str: str, master_key: str) -> tuple:
         """ Re cifra os dados da carteira com a chave mestra. """
-        nounce = secrets.token_bytes(16)
+        nounce = secrets.token_hex(16)
         h = hashlib.new('sha256')
-        h.update(f"{master_key}{nounce.hex()}".encode('utf-8'))
+        h.update(f"{master_key}{nounce}".encode('utf-8'))
 
         enc_secret = h.digest()
 
@@ -364,7 +366,7 @@ class VerifyService:
             ]
         }
 
-    def _encrypt_data(self, data: list, master_key: str, salt: str) -> dict:
+    def _encrypt_data(self, data: dict, master_key: str, salt: str) -> dict:
         """
         Processa a lista de dados recebida, cifrando cada valor individualmente.
         """

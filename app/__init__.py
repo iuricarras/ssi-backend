@@ -123,7 +123,7 @@ def create_app(config_class=Config) -> Flask:
     # ------------------------
     
     # --- Registar Rotas de Notificação ---
-    register_notification_routes(api_blueprint, notification_service, email_service, message_authentication)
+    register_notification_routes(api_blueprint, notification_service, email_service, message_authentication, verify_service)
     # -------------------------------------------
 
     app.register_blueprint(api_blueprint)

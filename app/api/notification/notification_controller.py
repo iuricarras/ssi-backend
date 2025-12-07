@@ -5,7 +5,7 @@ from app.api.message import MessageAuthentication
 
 from app.services.email_service import EmailService 
 
-def create_notification_controller(notification_service, message_authentication):
+def create_notification_controller(notification_service, message_authentication, verify_service):
     """
     Factory que cria e retorna o controller de Notificações.
     """
@@ -120,7 +120,7 @@ def create_notification_controller(notification_service, message_authentication)
         if action not in ["ACCEPT", "REJECT"]:
             return jsonify({'error': 'A ação deve ser "ACCEPT" ou "REJECT".'}), 400
 
-        result = notification_service.respond_to_notification(user_id, notification_id, action, master_key)
+        result = notification_service.respond_to_notification(user_id, notification_id, action, master_key, verify_service)
 
         data = result
         hmac = message_authentication.generate_hmac_signature(
