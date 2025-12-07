@@ -49,6 +49,10 @@ def create_notification_controller(notification_service, message_authentication)
         if not recipient_email or not certificate_data:
             return jsonify({'error': 'O email do destinatário e os dados do certificado são obrigatórios.'}), 400
 
+        ok, error_msg = notification_service.verify_certificate_signature(requester_id, certificate_data)
+        if not ok:
+            return jsonify({'error': error_msg}), 400
+
         result = notification_service.request_certificate_addition(requester_id, recipient_email, certificate_data)
 
         data = result

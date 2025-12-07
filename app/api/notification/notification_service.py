@@ -3,9 +3,14 @@ from pymongo.collection import Collection
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
 import secrets
+import json
+import base64
+from app.services.email_service import EmailService
+from app.api.carteira.carteira_service import CarteiraService
 
 from app.services.email_service import EmailService
-from app.api.carteira.carteira_service import CarteiraService 
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding
 
 class NotificationService:
     """
@@ -170,3 +175,50 @@ class NotificationService:
             
         else:
             return {"success": False, "error": "Ação inválida. Use 'ACCEPT' ou 'REJECT'.", "status": 400}
+
+    def recreate_json_exact(self, certificate_data: dict) -> bytes:
+        cert = {k: v for k, v in certificate_data.items() if k != "signature"}
+        json_str = json.dumps(cert, indent=2, ensure_ascii=False)
+        return json_str.encode("utf-8")
+
+
+    def verify_rsa_signature_pkcs1(self, public_key_pem: str, message_bytes: bytes, signature_b64: str) -> bool:
+        try:
+            public_key = serialization.load_pem_public_key(public_key_pem.encode("utf-8"))
+            signature = base64.b64decode(signature_b64)
+
+            public_key.verify(
+                signature,
+                message_bytes,
+                padding.PKCS1v15(),
+                hashes.SHA256(),
+            )
+            return True
+
+        except Exception as e:
+            print("Erro validação RSA:", e)
+            return False
+
+
+    def verify_certificate_signature(self, requester_id: str, certificate_data: dict) -> (bool, str):
+        signature_b64 = certificate_data.get("signature")
+
+        if not signature_b64:
+            return False, "O certificado enviado não contém uma assinatura."
+
+        entity = self.users.find_one({"email": requester_id})
+        if not entity:
+            return False, "Entidade certificadora não encontrada."
+
+        public_key_pem = entity.get("signkey")
+        if not public_key_pem:
+            return False, "A entidade certificadora não possui chave pública registrada."
+
+        message_bytes = self.recreate_json_exact(certificate_data)
+
+        ok = self.verify_rsa_signature_pkcs1(public_key_pem, message_bytes, signature_b64)
+
+        if not ok:
+            return False, "Assinatura digital inválida."
+
+        return True, None
