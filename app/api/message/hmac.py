@@ -16,7 +16,14 @@ class MessageAuthentication():
 
     def _create_hmac_secret(self, userID: str, isEC: bool) -> str:
         user = self.nonces.find_one({"email": userID}, sort=[('_id', DESCENDING)] )
-        secret = f"{userID}.{user.get('nonce')}"
+        
+        # Se o utilizador não tem nonce (ex: swagger-login), usa uma string padrão
+        if user is None:
+            nonce = "default-nonce-for-testing"
+        else:
+            nonce = user.get('nonce', 'default-nonce')
+        
+        secret = f"{userID}.{nonce}"
         print("HMAC Secret:", secret)
         h = hashlib.new('sha256')
         h.update(secret.encode('utf-8'))

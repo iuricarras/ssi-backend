@@ -74,38 +74,32 @@ def create_auth_controller(auth_service, message_authentication: MessageAuthenti
         """
         Retorna informações do utilizador autenticado.
         """
-        claims = get_jwt()
-        email = get_jwt_identity()
-        is_ec = claims.get("is_ec", False)
+        try:
+            claims = get_jwt()
+            email = get_jwt_identity()
+            is_ec = claims.get("is_ec", False)
+            print(f"DEBUG /auth/me: email={email}, is_ec={is_ec}")
 
-        # message = message_authentication.generate_hmac_signature(
-        #     message=str(get_jwt_identity()),
-        #     userID=str(get_jwt_identity()),
-        #     isEC=is_ec
-        # )
-        # print("Generated HMAC message:", message)
+            user_info = auth_service.get_user_by_email(email)
+            if not user_info:
+                user_info = {}
+            
+            user_info['id'] = get_jwt_identity()
+            user_info['isEC'] = is_ec
 
-        # valid, decoded_message = message_authentication.verify_hmac_signature(
-        #     encoded=message,
-        #     userID=str(get_jwt_identity()),
-        #     isEC=is_ec
-        # )
-        # print("Verified HMAC message:", valid, decoded_message)
-
-        user_info = auth_service.get_user_by_email(email)
-        if not user_info:
-            user_info = {}
-        
-        user_info['id'] = get_jwt_identity()
-        user_info['isEC'] = is_ec
-
-        hmac = message_authentication.generate_hmac_signature(
-            message=user_info,
-            userID=str(user_info['id']),
-            isEC=is_ec
-        )
-        """Retorna informações do usuário autenticado (principalmente ID)."""
-        return jsonify({"data": user_info, "hmac": hmac}), 200
+            hmac = message_authentication.generate_hmac_signature(
+                message=user_info,
+                userID=str(user_info['id']),
+                isEC=is_ec
+            )
+            print(f"DEBUG /auth/me: user_info={user_info}")
+            """Retorna informações do usuário autenticado (principalmente ID)."""
+            return jsonify({"data": user_info, "hmac": hmac}), 200
+        except Exception as e:
+            print(f"ERROR /auth/me: {type(e).__name__}: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({"error": f"Erro ao processar /auth/me: {str(e)}"}), 500
 
     @bp.post('/auth/refresh')
     @jwt_required(refresh=True)

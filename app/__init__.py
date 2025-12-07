@@ -21,7 +21,7 @@ from .api.carteira.carteira_service import CarteiraService
 from .api.carteira import register_carteira_routes
 from .api.user import register_user_routes
 from .api.verify.verify_service import VerifyService
-
+from .api.verify import register_ver_routes # Importação corrigida para usar o novo init
 
 jwt = JWTManager()
 
@@ -33,11 +33,14 @@ def create_app(config_class=Config) -> Flask:
             "withCredentials": True
         }
     }
-    # CORS para aceitar cookies
+    # CORS para aceitar cookies e métodos HTTP personalizados
     CORS(
         app,
         supports_credentials=True,
-        origins=[app.config["CORS_ORIGIN"]]
+        origins=[app.config["CORS_ORIGIN"]],
+        allow_headers=["Content-Type", "Authorization"],
+        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        expose_headers=["Content-Type"]
     )
     # Swagger
     Swagger(app)
@@ -87,13 +90,14 @@ def create_app(config_class=Config) -> Flask:
         config=config_class
     )
     
-    # [2] Criamos o NotificationService, INJETANDO o CarteiraService
+    # [2] Criamos o NotificationService, INJETANDO o CarteiraService E o VerifyService
     notification_service = NotificationService(
         mongo_client=mongo_client,
         db_name=db_name,
         mail_service=email_service,
         carteira_service=carteira_service, # INJEÇÃO CRÍTICA
-        config=config_class
+        config=config_class,
+        verify_service=verify_service # INJEÇÃO CRÍTICA
     )
     # ----------------------------------------------------------------
 
@@ -106,7 +110,8 @@ def create_app(config_class=Config) -> Flask:
     from .api import api_blueprint
     from .api.auth import register_auth_routes
     from .api.register import register_reg_routes
-    from .api.verify import register_ver_routes
+    # from .api.verify import register_ver_routes # Removido para usar a nova função
+
     
     # --- ROTAS EXISTENTES ---
     register_reg_routes(api_blueprint, register_service)
@@ -117,10 +122,14 @@ def create_app(config_class=Config) -> Flask:
     # ----------------------------------
     
     register_user_routes(api_blueprint, mongo_client, db_name, message_authentication)
-    register_ver_routes(api_blueprint, verify_service, message_authentication)
-    # ------------------------
+    
+    # --- REGISTAR ROTAS DE VERIFICAÇÃO (usando o novo init) ---
+    # Passamos o notification_service para o controller de verificação
+    register_ver_routes(api_blueprint, verify_service, notification_service, message_authentication)
+    # ---------------------------------------------------------
     
     # --- Registar Rotas de Notificação ---
+    # CORREÇÃO AQUI: A função espera 4 argumentos.
     register_notification_routes(api_blueprint, notification_service, email_service, message_authentication)
     # -------------------------------------------
 

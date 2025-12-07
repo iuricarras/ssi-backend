@@ -3,8 +3,6 @@ from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 import os
 from app.api.message import MessageAuthentication
 
-from app.services.email_service import EmailService 
-
 def create_notification_controller(notification_service, message_authentication):
     """
     Factory que cria e retorna o controller de Notificações.
@@ -93,7 +91,7 @@ def create_notification_controller(notification_service, message_authentication)
     def respond_to_notification():
         """
         O utilizador aceita ou recusa uma notificação pendente.
-        Requer 'notification_id', 'action' (ACCEPT/REJECT) e 'master_key' (se for ACCEPT de certificado).
+        Requer 'notification_id', 'action' (ACCEPT/REJECT) e 'master_key' (se for ACCEPT).
         """
         user_id = get_current_user_id()
         if not user_id:
@@ -120,6 +118,7 @@ def create_notification_controller(notification_service, message_authentication)
         if action not in ["ACCEPT", "REJECT"]:
             return jsonify({'error': 'A ação deve ser "ACCEPT" ou "REJECT".'}), 400
 
+        # master_key só é obrigatória se o serviço interno o exigir
         result = notification_service.respond_to_notification(user_id, notification_id, action, master_key)
 
         data = result
