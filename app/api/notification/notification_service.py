@@ -109,6 +109,10 @@ class NotificationService:
             requester_info = self._get_user_info(notif.get('requester_id'))
             notif['requester_name'] = requester_info.get('nome', notif.get('requester_id'))
 
+        for notif in notifications:
+            if isinstance(notif.get('created_at'), datetime):
+                notif['created_at'] = notif['created_at'].isoformat()
+
         return notifications
 
 

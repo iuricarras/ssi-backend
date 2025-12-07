@@ -1,8 +1,9 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from app.api.message import MessageAuthentication
 import os
 
-def create_verify_controller(verify_service):
+def create_verify_controller(verify_service, message_authentication: MessageAuthentication):
     """
     Factory que cria e retorna o controller da verificação.
     """
@@ -20,18 +21,28 @@ def create_verify_controller(verify_service):
     @jwt_required()
     def request_verification():
         """Solicita uma nova verificação."""
-        data = request.get_json(silent=True)
+        message = request.get_json(silent=True)
         user_id = get_current_user_id()
+
+        data = message.get('data')
+        hmac = message.get('hmac')
+
+        if not message_authentication.verify_hmac_signature(data, hmac, user_id, isEC=False):
+            return jsonify({'error': 'HMAC inválido.'}), 400
 
         if not data:
             return jsonify({'error': 'Os dados devem ser JSON.'}), 400
 
         result = verify_service.request_verification(user_id, data)
 
-        if not result['success']:
-            return jsonify({'error': result['error']}), result['status']
+        data = result
+        hmac = message_authentication.generate_hmac_signature(
+            message=data,
+            userID=user_id,
+            isEC=False
+        )
 
-        return jsonify({'message': result['message']}), result['status']
+        return jsonify({'data': data, 'hmac': hmac}), 200
 
 
     @bp.post('/verify/accept-verification')

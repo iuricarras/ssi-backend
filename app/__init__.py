@@ -117,11 +117,11 @@ def create_app(config_class=Config) -> Flask:
     # ----------------------------------
     
     register_user_routes(api_blueprint, mongo_client, db_name, message_authentication)
-    register_ver_routes(api_blueprint, verify_service)
+    register_ver_routes(api_blueprint, verify_service, message_authentication)
     # ------------------------
     
     # --- Registar Rotas de Notificação ---
-    register_notification_routes(api_blueprint, notification_service, email_service)
+    register_notification_routes(api_blueprint, notification_service, email_service, message_authentication)
     # -------------------------------------------
 
     app.register_blueprint(api_blueprint)

@@ -1,10 +1,11 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 import os
+from app.api.message import MessageAuthentication
 
 from app.services.email_service import EmailService 
 
-def create_notification_controller(notification_service):
+def create_notification_controller(notification_service, message_authentication):
     """
     Factory que cria e retorna o controller de Notificações.
     """
@@ -24,10 +25,17 @@ def create_notification_controller(notification_service):
         Requer token JWT da EC.
         """
         requester_id = get_current_user_id()
-        data = request.get_json(silent=True)
-        
+        message = request.get_json(silent=True)
+    
+
         claims = get_jwt()
         is_ec = claims.get('is_ec', False)
+
+        data = message.get('data')
+        hmac = message.get('hmac')
+
+        if not message_authentication.verify_hmac_signature(data, hmac, requester_id, isEC=is_ec):
+            return jsonify({'error': 'HMAC inválido.'}), 400
 
         if not data:
             return jsonify({'error': 'Os dados devem ser JSON.'}), 400
@@ -43,10 +51,17 @@ def create_notification_controller(notification_service):
 
         result = notification_service.request_certificate_addition(requester_id, recipient_email, certificate_data)
 
+        data = result
+        hmac = message_authentication.generate_hmac_signature(
+            message=data,
+            userID=requester_id,
+            isEC=False
+        )
+
         if not result['success']:
             return jsonify({'error': result['error']}), result['status']
 
-        return jsonify({'message': result['message'], 'notification_id': result.get('notification_id')}), result['status']
+        return jsonify({'data': data, 'hmac': hmac}), 200
 
 
     @bp.get('/pending')
@@ -61,7 +76,13 @@ def create_notification_controller(notification_service):
 
         notifications = notification_service.get_pending_notifications(user_id)
         
-        return jsonify({'notifications': notifications}), 200
+        data = notifications
+        hmac = message_authentication.generate_hmac_signature(
+            message=data,
+            userID=user_id,
+            isEC=False
+        )
+        return jsonify({'data': data, 'hmac': hmac}), 200
 
     @bp.post('/respond')
     @jwt_required()
@@ -74,7 +95,13 @@ def create_notification_controller(notification_service):
         if not user_id:
             return jsonify({"message": "Não autenticado."}), 401
 
-        data = request.get_json(silent=True)
+        message = request.get_json(silent=True)
+        data = message.get('data')
+        hmac = message.get('hmac')
+
+        if not message_authentication.verify_hmac_signature(data, hmac, user_id, isEC=False):
+            return jsonify({'error': 'HMAC inválido.'}), 400
+
         if not data:
             return jsonify({'error': 'Os dados devem ser JSON.'}), 400
 
@@ -91,9 +118,16 @@ def create_notification_controller(notification_service):
 
         result = notification_service.respond_to_notification(user_id, notification_id, action, master_key)
 
+        data = result
+        hmac = message_authentication.generate_hmac_signature(
+            message=data,
+            userID=user_id,
+            isEC=False
+        )
+
         if not result['success']:
             return jsonify({'error': result['error']}), result['status']
 
-        return jsonify({'message': result['message']}), result['status']
+        return jsonify({'data': data, 'hmac': hmac}), 200
 
     return bp

@@ -4,10 +4,10 @@ import hmac
 from pymongo import MongoClient, DESCENDING
 from pymongo.collection import Collection
 import json as JSON
+import datetime
 
 ## Utilizar esta função para gerar a assinatura HMAC de uma mensagem
 ## Utilizar no retorno de todos os endpoints
-
 
 class MessageAuthentication():
     def __init__(self, mongo_client: MongoClient, db_name: str):
@@ -25,6 +25,7 @@ class MessageAuthentication():
     def generate_hmac_signature(self, message: dict, userID: str, isEC: bool) -> str:
         hashedSecret = self._create_hmac_secret(userID, isEC)
         print("Hashed Secret for HMAC:", hashedSecret)
+        print(JSON.dumps(message, sort_keys=True, separators=(',', ':'), ensure_ascii=False))
         h = hmac.new(hashedSecret.encode('utf-8'), JSON.dumps(message, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode('utf-8'), hashlib.sha256)
         return h.hexdigest()
 
