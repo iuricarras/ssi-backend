@@ -81,19 +81,22 @@ def create_app(config_class=Config) -> Flask:
         config=config_class
     )
     
-    verify_service = VerifyService(
-        mongo_client=mongo_client,
-        db_name=db_name,
-        config=config_class
-    )
-    
     # [2] Criamos o NotificationService, INJETANDO o CarteiraService
     notification_service = NotificationService(
         mongo_client=mongo_client,
         db_name=db_name,
         mail_service=email_service,
-        carteira_service=carteira_service, # INJEÇÃO CRÍTICA
+        carteira_service=carteira_service, 
         config=config_class
+    )
+    
+    # [3] Criamos o VerifyService, INJETANDO o NotificationService
+    # A circularidade é quebrada porque NotificationService já não importa VerifyService no topo do arquivo.
+    verify_service = VerifyService(
+        mongo_client=mongo_client,
+        db_name=db_name,
+        config=config_class,
+        notification_service=notification_service 
     )
     # ----------------------------------------------------------------
 
