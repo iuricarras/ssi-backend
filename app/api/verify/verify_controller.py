@@ -62,15 +62,15 @@ def create_verify_controller(verify_service, message_authentication: MessageAuth
 
         return jsonify({'message': result['message']}), result['status']   
 
-    @bp.put('/verify/get-verifications/<id>')
+    @bp.get('/verify/get-verifications/<verid>')
     @jwt_required()
-    def get_verifications(id):
+    def get_verifications(verid):
         """Obtém uma verificação a partir do ID."""
+        print("Getting verification for ID:", verid)
         user_id = get_current_user_id()
         data = request.get_json(silent=True)
 
-        result = verify_service.get_verification(user_id, id, data)
-
+        result = verify_service.get_verification(user_id, verid, data)
         if not result['success']:
             return jsonify({'error': result['error']}), result['status']
 

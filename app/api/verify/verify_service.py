@@ -4,6 +4,7 @@ import hashlib
 import secrets
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
+import json
 
 class VerifyService:
     def __init__(self, mongo_client: MongoClient, db_name: str, config, notification_service): 
@@ -373,13 +374,13 @@ class VerifyService:
         new_personal_data = []
         new_certificates_map = {} 
 
-        for item in data:
-            if item.get('tipo') == 'personalData':
+        for item in data.get('personalData', []) + data.get('certificates', []):
+            if item == 'personalData':
                 new_personal_data.append({
                     'name': item.get('chave', ''),
                     'value': self._encrypt_value(item.get('valor', ''), master_key, salt)
                 })
-            elif item.get('tipo') == 'certificate':
+            elif item == 'certificate':
                 cert_nome = item.get('nome')
                 if cert_nome not in new_certificates_map:
                     new_certificates_map[cert_nome] = {'nome': cert_nome}
