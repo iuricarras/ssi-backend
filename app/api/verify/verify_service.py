@@ -269,7 +269,7 @@ class VerifyService:
 
         if verification_data_type['tipo'] == 'personalData':
             for item in personalData:
-                if item['name'] in verification_data_type['name']:
+                if item['name'] in verification_data_type['chave']:
                     verification_data[item['name']] = item['value']
         elif verification_data_type['tipo'] == 'certificate':
             cert_nome = verification_data_type.get('nome')
