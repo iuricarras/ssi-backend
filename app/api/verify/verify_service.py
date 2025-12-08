@@ -283,7 +283,7 @@ class VerifyService:
 
     def _verifier_get_encrypted_data(self, data_encrypted: str, master_key: str, salt: str) -> str:
         """ Descifra os dados da carteira com a chave mestra. """
-        secret = f"{master_key}.{salt}"
+        secret = f"{master_key}{salt}"
         h = hashlib.new('sha256')
         h.update(secret.encode('utf-8'))
         secret = h.digest()
