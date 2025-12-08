@@ -190,7 +190,7 @@ class VerifyService:
         salt = verification.get('nounce')
 
         # Descifrar os dados de verificação com a chave mestra
-        decrypted_data_str = self._verifier_decrypt_data(
+        decrypted_data_str = self._verifier_get_encrypted_data(
             data_encrypted, master_key, salt
         )
 
@@ -280,7 +280,7 @@ class VerifyService:
         return verification_data
 
 
-    def _verifier_get_encrypted_data(self, data_encrypted: bytes, master_key: str, salt: str) -> str:
+    def _verifier_get_encrypted_data(self, data_encrypted: str, master_key: str, salt: str) -> str:
         """ Descifra os dados da carteira com a chave mestra. """
         secret = f"{master_key}.{salt}"
         h = hashlib.new('sha256')
@@ -325,7 +325,7 @@ class VerifyService:
         data_reencrypted = encryptor.update(padded_data) + encryptor.finalize()
 
         # data_reencrypted = encryptor.update(data_str.encode('utf-8')) + encryptor.finalize()
-        return data_reencrypted
+        return data_reencrypted.hex()
 
     def _rencrypt_data(self, data_str: str, master_key: str) -> tuple:
         """ Re cifra os dados da carteira com a chave mestra. """
