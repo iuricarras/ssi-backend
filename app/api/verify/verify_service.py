@@ -149,10 +149,10 @@ class VerifyService:
         # Cifar novamente os dados da carteira do utilizador para segurança
         nounce = secrets.token_hex(16)
         data_reencrypted = self._encrypt_data(decrypted_data_str, master_key, nounce)
+        print("data_reencrypted:", data_reencrypted)
         self.wallets.update_one(
                 {'user_id': user_id},
                 {'$set': {'data': data_reencrypted, 'salt': nounce}},
-                upsert=True
             )
 
 
@@ -264,18 +264,19 @@ class VerifyService:
     def _get_verification_data(self, data: dict, verification_data_type: str) -> dict:
 
         personalData = data.get('personalData', {})
-        credentials = data.get('credentials', {})
-        print(personalData)
+        credentials = data.get('certificates', {})
         verification_data = {}  
 
-        for item in personalData:
-            if item['name'] == verification_data_type["chave"]:
-                verification_data[item['name']] = item['value']
-                return verification_data
-        for item in credentials:
-            if item['nome'] == verification_data_type["chave"]:
-                verification_data[item['nome']] = item['valor']
-                return verification_data
+        if verification_data_type['tipo'] == 'personalData':
+            for item in personalData:
+                if item['name'] in verification_data_type['name']:
+                    verification_data[item['name']] = item['value']
+        elif verification_data_type['tipo'] == 'certificate':
+            cert_nome = verification_data_type.get('nome')
+            for cert in credentials:
+                if cert.get('nome') == cert_nome:
+                    verification_data = cert
+                    break
 
         return verification_data
 
@@ -374,26 +375,28 @@ class VerifyService:
         new_personal_data = []
         new_certificates_map = {} 
 
-        for item in data.get('personalData', []) + data.get('certificates', []):
-            if item == 'personalData':
-                new_personal_data.append({
-                    'name': item.get('chave', ''),
-                    'value': self._encrypt_value(item.get('valor', ''), master_key, salt)
-                })
-            elif item == 'certificate':
-                cert_nome = item.get('nome')
-                if cert_nome not in new_certificates_map:
-                    new_certificates_map[cert_nome] = {'nome': cert_nome}
+        print("Data to encrypt:", data)
+
+        for item in data.get('personalData'):
+            new_personal_data.append({
+                'name': item.get('name', ''),
+                'value': self._encrypt_value(item.get('value', ''), master_key, salt)
+            })
+            
+        for item in data.get('certificates'):
+            cert_nome = item.get('nome')
+            if cert_nome not in new_certificates_map:
+                new_certificates_map[cert_nome] = {'nome': cert_nome}
                 
-                # Certificados vêm como lista de campos (do frontend/add_certificate)
-                for campo in item.get('campos', []):
-                    new_certificates_map[cert_nome][campo['chave']] = self._encrypt_value(campo['valor'], master_key, salt)
+            # Certificados vêm como lista de campos (do frontend/add_certificate)
+            for campo in item.get('campos', []):
+                new_certificates_map[cert_nome][campo['chave']] = self._encrypt_value(campo['valor'], master_key, salt)
                 
-                # Se o certificado já estiver no novo formato de mapa (após ser decifrado e re-entrar no loop)
-                if 'campos' not in item:
-                     for key, value in item.items():
-                        if key not in ['nome', 'tipo'] and value is not None:
-                            new_certificates_map[cert_nome][key] = self._encrypt_value(value, master_key, salt)
+            # Se o certificado já estiver no novo formato de mapa (após ser decifrado e re-entrar no loop)
+            if 'campos' not in item:
+                 for key, value in item.items():
+                    if key not in ['nome', 'tipo'] and value is not None:
+                        new_certificates_map[cert_nome][key] = self._encrypt_value(value, master_key, salt)
 
 
         return {
