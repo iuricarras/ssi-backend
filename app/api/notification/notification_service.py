@@ -121,38 +121,37 @@ class NotificationService:
         return notifications
 
 
-    def respond_to_notification(self, user_id: str, notification_id: str, action: str, master_key: str = None) -> Dict[str, Any]:
+    def respond_to_notification(self, user_id: str, notification_id: str, action: str, master_key: str = None, verify_service=None) -> Dict[str, Any]:
         """
         O utilizador responde a uma notificação (Aceitar ou Recusar).
-        
+        Para pedidos de verificação, apenas altera o status do pedido.
         """
-        
+
         notification = self.notifications.find_one({"notification_id": notification_id})
 
         if not notification:
             return {"success": False, "error": "Notificação não encontrada.", "status": 404}
-        
+
         if notification['recipient_user_id'] != user_id:
             return {"success": False, "error": "Não autorizado a responder a esta notificação.", "status": 403}
-            
+
         if notification['status'] != "PENDING":
             return {"success": False, "error": f"Requisição já foi {notification['status'].lower()}.", "status": 400}
 
-        
         if action == "REJECT":
             self.notifications.update_one(
                 {"notification_id": notification_id},
                 {"$set": {"status": "REJECTED", "updated_at": datetime.utcnow()}}
             )
             return {"success": True, "message": "Requisição recusada com sucesso.", "status": 200}
-        
+
         elif action == "ACCEPT":
             if notification['type'] == "CERTIFICATE_ADDITION":
                 if not master_key:
                     return {"success": False, "error": "A chave mestra é obrigatória para aceitar a adição de certificados.", "status": 400}
-                
+
                 try:
-                    certificate_data = notification['payload']['data']                    
+                    certificate_data = notification['payload']['data']
                     if not self.carteira_service.add_certificate(user_id, certificate_data, master_key):
                         return {"success": False, "error": "Falha ao adicionar certificado (DB error).", "status": 500}
 
@@ -168,13 +167,31 @@ class NotificationService:
                 )
                 return {"success": True, "message": "Certificado adicionado à sua carteira.", "status": 200}
 
-            
-            #TODO: Adicionar lógica para outros tipos de notificação (Pedido de Verificação de Dados)
+            elif notification['type'] == "VERIFICATION_REQUEST":
+                if not verify_service:
+                    return {"success": False, "error": "Serviço de verificação não disponível.", "status": 500}
 
-            return {"success": False, "error": "Tipo de notificação desconhecido para aceitação.", "status": 400}
-            
+                verification_id = notification["payload"]["verification_id"]
+                print(f"Accepting verification request {verification_id} for user {user_id}")
+                # Atualiza o pedido como aceite
+                result = verify_service.accept_verification(user_id=user_id, data={"verificationId": verification_id, "masterKey": master_key})
+                if not result.get("success"):
+                    return {"success": False, "error": result.get("error"), "status": result.get("status", 400)}
+
+                # Atualiza a notificação como aceite
+                self.notifications.update_one(
+                    {"notification_id": notification_id},
+                    {"$set": {"status": "ACCEPTED", "updated_at": datetime.utcnow()}}
+                )
+
+                return {"success": True, "message": "Pedido de verificação aceite.", "status": 200}
+
+            else:
+                return {"success": False, "error": "Tipo de notificação desconhecido para aceitação.", "status": 400}
+
         else:
             return {"success": False, "error": "Ação inválida. Use 'ACCEPT' ou 'REJECT'.", "status": 400}
+
 
     def recreate_json_exact(self, certificate_data: dict) -> bytes:
         cert = {k: v for k, v in certificate_data.items() if k != "signature"}

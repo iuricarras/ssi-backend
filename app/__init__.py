@@ -81,11 +81,7 @@ def create_app(config_class=Config) -> Flask:
         config=config_class
     )
     
-    verify_service = VerifyService(
-        mongo_client=mongo_client,
-        db_name=db_name,
-        config=config_class
-    )
+
     
     # [2] Criamos o NotificationService, INJETANDO o CarteiraService
     notification_service = NotificationService(
@@ -94,6 +90,12 @@ def create_app(config_class=Config) -> Flask:
         mail_service=email_service,
         carteira_service=carteira_service, # INJEÇÃO CRÍTICA
         config=config_class
+    )
+    verify_service = VerifyService(
+        mongo_client=mongo_client,
+        db_name=db_name,
+        config=config_class,
+        notification_service=notification_service
     )
     # ----------------------------------------------------------------
 
@@ -121,7 +123,7 @@ def create_app(config_class=Config) -> Flask:
     # ------------------------
     
     # --- Registar Rotas de Notificação ---
-    register_notification_routes(api_blueprint, notification_service, email_service, message_authentication)
+    register_notification_routes(api_blueprint, notification_service, email_service, message_authentication, verify_service )
     # -------------------------------------------
 
     app.register_blueprint(api_blueprint)

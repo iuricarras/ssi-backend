@@ -62,19 +62,20 @@ def create_verify_controller(verify_service, message_authentication: MessageAuth
 
         return jsonify({'message': result['message']}), result['status']   
 
-    @bp.put('/verify/get-verifications/<id>')
+    # Accept string IDs (tokens); int converter caused 404 when ID is alphanumeric
+    @bp.route('/verify/get-verifications/<verification_id>', methods=['PUT'])
     @jwt_required()
-    def get_verifications(id):
+    def get_verifications(verification_id):
         """Obtém uma verificação a partir do ID."""
+        print("Getting verification for ID:", verification_id)
         user_id = get_current_user_id()
         data = request.get_json(silent=True)
 
-        result = verify_service.get_verification(user_id, id, data)
-
+        result = verify_service.get_verification(user_id, verification_id, data)
         if not result['success']:
             return jsonify({'error': result['error']}), result['status']
 
-        return jsonify({'verification': result['verification']}), result['status']
+        return jsonify({'verification': result['verifications']}), result['status']
     
 
     @bp.get('/verify/get-pending')
